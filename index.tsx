@@ -31,7 +31,6 @@ import {
   Zap,
   Play,
   ShieldCheck,
-  Cpu as Processor,
   X,
   Github,
   Upload,
@@ -283,6 +282,12 @@ const App = () => {
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isGithubModalOpen, setIsGithubModalOpen] = useState(false);
+
+  // Termux / Local Directory Mount State
+  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [dirSyncStatus, setDirSyncStatus] = useState<'idle' | 'syncing' | 'saving' | 'error'>('idle');
+  const [dirLinkedProjectId, setDirLinkedProjectId] = useState<string | null>(null);
+
   const [githubConfig, setGithubConfig] = useState({
     owner: '',
     repo: '',
@@ -1022,6 +1027,112 @@ const App = () => {
     }
   };
 
+  // --- Local Directory / Termux Mounting (File System Access API) ---
+  const mountDirectory = async () => {
+    if (!activeProjectId) return;
+    try {
+      const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+      setDirHandle(handle);
+      setDirLinkedProjectId(activeProjectId);
+      await readDirIntoProject(handle, activeProjectId, null);
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.error('Directory mount failed:', err);
+        setDirSyncStatus('error');
+      }
+    }
+  };
+
+  const readDirIntoProject = async (
+    handle: FileSystemDirectoryHandle,
+    projectId: string,
+    parentFolderId: string | null
+  ) => {
+    setDirSyncStatus('syncing');
+    try {
+      for await (const [name, entry] of (handle as any).entries()) {
+        if (name.startsWith('.') || name === '__MACOSX' || name === 'node_modules') continue;
+
+        if (entry.kind === 'directory') {
+          // Create virtual folder (deduplicate by name + parent)
+          const folderId = `dir-${projectId}-${parentFolderId ?? 'root'}-${name}`;
+          setFolders(prev => {
+            if (prev.find(f => f.id === folderId)) return prev;
+            return [...prev, { id: folderId, name, projectId, updatedAt: Date.now() }];
+          });
+          await readDirIntoProject(entry as FileSystemDirectoryHandle, projectId, folderId);
+        } else {
+          // Text files only — skip binaries
+          const file = await (entry as FileSystemFileHandle).getFile();
+          if (file.size > 2 * 1024 * 1024) continue; // skip >2MB
+          let content = '';
+          try { content = await file.text(); } catch { continue; }
+
+          const fileId = `dir-${projectId}-${parentFolderId ?? 'root'}-${name}`;
+          setFiles(prev => {
+            const existing = prev.find(f => f.id === fileId);
+            if (existing) {
+              return prev.map(f => f.id === fileId ? { ...f, content, updatedAt: Date.now() } : f);
+            }
+            return [...prev, {
+              id: fileId,
+              name,
+              content,
+              language: getLanguageFromExtension(name),
+              projectId,
+              folderId: parentFolderId,
+              updatedAt: Date.now()
+            }];
+          });
+        }
+      }
+      setDirSyncStatus('idle');
+    } catch (err) {
+      console.error('Directory read failed:', err);
+      setDirSyncStatus('error');
+    }
+  };
+
+  const saveFileToDisk = async (file: VFile) => {
+    if (!dirHandle || file.projectId !== dirLinkedProjectId) return;
+    try {
+      // Resolve the correct subfolder handle
+      let targetHandle: FileSystemDirectoryHandle = dirHandle;
+      if (file.folderId) {
+        const folder = folders.find(f => f.id === file.folderId);
+        if (folder) {
+          targetHandle = await dirHandle.getDirectoryHandle(folder.name, { create: true });
+        }
+      }
+      const fileHandle = await targetHandle.getFileHandle(file.name, { create: true });
+      const writable = await (fileHandle as any).createWritable();
+      await writable.write(file.content);
+      await writable.close();
+    } catch (err) {
+      console.error(`Failed to save ${file.name} to disk:`, err);
+    }
+  };
+
+  const syncAllToDisk = async () => {
+    if (!dirHandle || !dirLinkedProjectId) return;
+    setDirSyncStatus('saving');
+    const linked = files.filter(f => f.projectId === dirLinkedProjectId);
+    for (const file of linked) await saveFileToDisk(file);
+    setDirSyncStatus('idle');
+  };
+
+  // Auto-save linked files to disk (debounced 1.5s)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!dirHandle || !dirLinkedProjectId) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      const changed = files.filter(f => f.projectId === dirLinkedProjectId);
+      changed.forEach(saveFileToDisk);
+    }, 1500);
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  }, [files]);
+
   // --- AI Code Intelligence ---
   const aiCodeAction = async (action: 'analyze' | 'refactor' | 'debug' | 'discuss', fileId: string) => {
     const file = files.find(f => f.id === fileId);
@@ -1042,19 +1153,28 @@ const App = () => {
 
     try {
       const ollama = getOllama();
-      const response = await ollama.chat({
+      const stream = await ollama.chat({
         model: llmConfig.model,
         messages: [
           { role: 'system', content: llmConfig.systemPrompt },
           { role: 'user', content: prompts[action] }
         ],
-        stream: false
+        stream: true,
       });
 
-      setChatHistory(prev => [...prev, { role: 'assistant', text: response.message.content }]);
+      setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
+      let fullText = '';
+      for await (const part of stream) {
+        fullText += part.message.content;
+        setChatHistory(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: 'assistant', text: fullText };
+          return updated;
+        });
+      }
     } catch (error) {
       console.error('AI Code Action failed:', error);
-      setChatHistory(prev => [...prev, { role: 'assistant', text: 'Protocol failure during AI code analysis.' }]);
+      setChatHistory(prev => [...prev, { role: 'assistant', text: 'Protocol failure during AI code analysis. Ensure Ollama is running.' }]);
     } finally {
       setIsTyping(false);
     }
@@ -1210,20 +1330,54 @@ const App = () => {
     let currentLog = [...newRun.logs];
     
     for (let i = 0; i < steps.length; i++) {
-      await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
+      await new Promise(r => setTimeout(r, 800 + Math.random() * 1200));
       
       currentLog.push({ timestamp: Date.now(), message: steps[i].msg, type: steps[i].type as any });
       
       setAgentRuns(prev => prev.map(r => r.id === runId ? { 
         ...r, 
-        status: i === steps.length - 1 ? 'completed' : 'running',
+        status: 'running',
         currentStep: steps[i].msg,
         logs: [...currentLog],
-        result: i === steps.length - 1 ? `PROTOCOL_OPTIMIZED: All objectives for goal "${agent.goal}" successfully processed into Knowledge Node ARC-7.` : undefined
       } : r));
-
-      if (i === steps.length - 1) grantReward(0.5);
     }
+
+    // Actually invoke Ollama for a real result
+    let finalResult = `PROTOCOL_OPTIMIZED: All objectives for goal "${agent.goal}" processed.`;
+    try {
+      const ollama = getOllama();
+      const agentPrompt = [
+        `You are an autonomous agent named "${agent.name}" with the role: ${agent.role}.`,
+        `Your goal: ${agent.goal}`,
+        `Your instructions: ${agent.instructions}`,
+        `Your constraints: ${agent.constraints.join(', ')}`,
+        `Available tools: ${agent.tools.join(', ')}`,
+        ``,
+        `Execute your goal and provide a concise but thorough intelligence report.`
+      ].join('\n');
+
+      const response = await ollama.chat({
+        model: llmConfig.model,
+        messages: [
+          { role: 'system', content: llmConfig.systemPrompt },
+          { role: 'user', content: agentPrompt }
+        ],
+        stream: false,
+      });
+      finalResult = response.message.content;
+    } catch (err) {
+      currentLog.push({ timestamp: Date.now(), message: `LLM unreachable — falling back to protocol report.`, type: 'error' });
+    }
+
+    setAgentRuns(prev => prev.map(r => r.id === runId ? { 
+      ...r, 
+      status: 'completed',
+      currentStep: 'Mission complete.',
+      logs: [...currentLog, { timestamp: Date.now(), message: 'Mission complete.', type: 'success' as const }],
+      result: finalResult
+    } : r));
+
+    grantReward(0.5);
   };
 
   const updateNote = (id: string, updates: Partial<Note>) => {
@@ -1293,17 +1447,38 @@ const App = () => {
       userMsg.attachments?.forEach(att => {
         messages.push({ role: 'system', content: `Knowledge Source [file: ${att.name}]:\n${att.content}` });
       });
-      
-      messages.push({ role: 'user', content: userMsg.text });
 
-      const response = await ollama.chat({
-        model: llmConfig.model,
-        messages: messages,
-        stream: false,
+      // Include recent conversation history so the model has context
+      const historyForContext = chatHistory
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .slice(-12); // last 6 turns
+      historyForContext.forEach(m => {
+        messages.push({ role: m.role as 'user' | 'assistant', content: m.text });
       });
 
-      const assistantMsg: ChatMessage = { role: 'assistant', text: response.message.content };
-      setChatHistory(prev => [...prev, assistantMsg]);
+      messages.push({ role: 'user', content: userMsg.text });
+
+      // Streaming response — tokens appear as they arrive
+      const stream = await ollama.chat({
+        model: llmConfig.model,
+        messages: messages,
+        stream: true,
+      });
+
+      // Add a placeholder assistant message and fill it in as tokens stream
+      setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
+
+      let fullText = '';
+      for await (const part of stream) {
+        fullText += part.message.content;
+        setChatHistory(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: 'assistant', text: fullText };
+          return updated;
+        });
+      }
+
+      const assistantMsg: ChatMessage = { role: 'assistant', text: fullText };
       setShortTermMemory(prev => [...prev, assistantMsg].slice(-10));
 
       // Successful inference grants small reward
@@ -1322,7 +1497,6 @@ const App = () => {
 
     } catch (error) {
       triggerPainSignal('Connection Error/Instability', correctedInput);
-      // ... (keep previous error handling)
       const assistantMsg: ChatMessage = { 
         role: 'assistant', 
         text: `Error connecting to local engine: ${error instanceof Error ? error.message : 'Unknown error'}.` 
@@ -2007,7 +2181,7 @@ const App = () => {
                 <div className="lg:col-span-1 bg-slate-900/60 border border-slate-800 rounded-[40px] p-8 shadow-xl">
                    <div className="flex items-center justify-between mb-8">
                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Neural Monitoring</h3>
-                     <Processor className="text-blue-500 animate-pulse" size={16} />
+                     <Cpu className="text-blue-500 animate-pulse" size={16} />
                    </div>
                    
                    <div className="space-y-8">
@@ -2179,7 +2353,7 @@ const App = () => {
                     {chatHistory.length === 0 && (
                       <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50">
                         <div className="p-4 bg-blue-600/10 rounded-full text-blue-500">
-                          <Processor size={48} />
+                          <Cpu size={48} />
                         </div>
                         <div>
                           <h3 className="text-xl font-bold text-slate-300">Local Intelligence Node</h3>
@@ -2618,8 +2792,56 @@ const App = () => {
                       <div className="flex-1 bg-slate-900/40 border border-slate-800 rounded-3xl p-4 flex flex-col min-h-0">
                         {/* ... existing explorer code ... */}
                         <div className="flex items-center justify-between mb-4 px-2">
-                           <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Workspace</h3>
+                           <div className="flex items-center gap-2">
+                             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Workspace</h3>
+                             {dirLinkedProjectId === activeProjectId && (
+                               <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
+                                 dirSyncStatus === 'syncing' ? 'bg-amber-500/20 text-amber-400 animate-pulse' :
+                                 dirSyncStatus === 'saving'  ? 'bg-blue-500/20 text-blue-400 animate-pulse' :
+                                 dirSyncStatus === 'error'   ? 'bg-rose-500/20 text-rose-400' :
+                                 'bg-teal-500/20 text-teal-400'
+                               }`}>
+                                 {dirSyncStatus === 'syncing' ? '⟳ Syncing' :
+                                  dirSyncStatus === 'saving'  ? '⟳ Saving' :
+                                  dirSyncStatus === 'error'   ? '⚠ Error' :
+                                  '⬡ Disk Linked'}
+                               </span>
+                             )}
+                           </div>
                            <div className="flex items-center gap-1">
+                             {dirLinkedProjectId === activeProjectId ? (
+                               <>
+                                 <button
+                                   onClick={() => dirHandle && readDirIntoProject(dirHandle, activeProjectId!, null)}
+                                   title="Pull from disk"
+                                   className="p-1 hover:bg-slate-800 rounded-lg text-teal-500 transition-colors"
+                                 >
+                                   <RefreshCcw size={13} />
+                                 </button>
+                                 <button
+                                   onClick={syncAllToDisk}
+                                   title="Push all to disk"
+                                   className="p-1 hover:bg-slate-800 rounded-lg text-blue-400 transition-colors"
+                                 >
+                                   <Save size={13} />
+                                 </button>
+                                 <button
+                                   onClick={() => { setDirHandle(null); setDirLinkedProjectId(null); setDirSyncStatus('idle'); }}
+                                   title="Unmount directory"
+                                   className="p-1 hover:bg-slate-800 rounded-lg text-rose-500 transition-colors"
+                                 >
+                                   <X size={13} />
+                                 </button>
+                               </>
+                             ) : (
+                               <button
+                                 onClick={mountDirectory}
+                                 title="Mount local / Termux directory"
+                                 className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-teal-400 transition-colors"
+                               >
+                                 <HardDrive size={14} />
+                               </button>
+                             )}
                              <button 
                                onClick={() => addFolder(activeProjectId!)}
                                title="New Folder"
@@ -3031,7 +3253,7 @@ const App = () => {
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-8 lg:p-12 opacity-50">
                    <div className="w-16 h-16 lg:w-20 lg:h-20 bg-slate-800 rounded-3xl flex items-center justify-center mb-6">
-                      <FolderOpen size={30} className="text-slate-600 lg:size-40" />
+                      <FolderOpen size={30} className="text-slate-600" />
                    </div>
                    <h3 className="text-lg lg:text-xl font-bold text-slate-300">No Active Workspace</h3>
                    <p className="text-xs lg:text-sm max-w-sm mt-2 font-medium leading-relaxed">Initialize a new project to start building locally-secured software nodes.</p>
@@ -3123,7 +3345,7 @@ const App = () => {
                   </>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-slate-600">
-                    <Monitor size={48} lg:size={64} className="mb-4 opacity-20" />
+                    <Monitor size={48} className="mb-4 opacity-20" />
                     <p className="text-base lg:text-lg font-medium opacity-50 text-center">Select an entry from the knowledge base or create a new one.</p>
                   </div>
                 )}
