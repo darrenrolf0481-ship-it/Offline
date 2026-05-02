@@ -252,6 +252,171 @@ const StatCard = ({ icon: Icon, label, value, status }: { icon: any, label: stri
   </div>
 );
 
+// --- Chat Hardening Utilities ---
+
+/** Strip null bytes, control chars, and cap length */
+const sanitizeInput = (raw: string): string => {
+  return raw
+    .replace(/\0/g, '')                        // null bytes
+    .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F]/g, '') // control chars except \t \n \r
+    .slice(0, 4000)                            // hard cap
+    .trim();
+};
+
+/** Prevent LLM prompt injection via attachments */
+const sanitizeAttachmentContent = (content: string): string => {
+  const MAX = 50_000;
+  return content
+    .replace(/\0/g, '')
+    .slice(0, MAX);
+};
+
+/** Parse a message into alternating text/code segments */
+interface MsgSegment {
+  type: 'text' | 'code';
+  content: string;
+  lang?: string;
+}
+
+const parseSegments = (text: string): MsgSegment[] => {
+  const segments: MsgSegment[] = [];
+  const regex = /```(\w*)\n?([\s\S]*?)```/g;
+  let last = 0;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) {
+      const prose = text.slice(last, match.index).trim();
+      if (prose) segments.push({ type: 'text', content: prose });
+    }
+    segments.push({ type: 'code', lang: match[1] || 'text', content: match[2].trim() });
+    last = match.index + match[0].length;
+  }
+  const tail = text.slice(last).trim();
+  if (tail) segments.push({ type: 'text', content: tail });
+  return segments.length ? segments : [{ type: 'text', content: text }];
+};
+
+/** After stream completes, if response mixes code + prose → split into separate ChatMessages */
+const splitIntoChatMessages = (fullText: string): ChatMessage[] => {
+  const segments = parseSegments(fullText);
+  if (segments.length <= 1) return [{ role: 'assistant', text: fullText }];
+  const hasCode = segments.some(s => s.type === 'code');
+  const hasText = segments.some(s => s.type === 'text');
+  if (!hasCode || !hasText) return [{ role: 'assistant', text: fullText }];
+  // Separate: prose first, then each code block as its own message
+  const msgs: ChatMessage[] = [];
+  const prose = segments.filter(s => s.type === 'text').map(s => s.content).join('\n\n').trim();
+  if (prose) msgs.push({ role: 'assistant', text: prose });
+  segments.filter(s => s.type === 'code').forEach(s => {
+    msgs.push({ role: 'assistant', text: '```' + (s.lang || '') + '\n' + s.content + '\n```' });
+  });
+  return msgs;
+};
+
+// --- MessageBubble Component ---
+const MessageBubble = ({ msg }: { msg: ChatMessage; key?: React.Key }) => {
+  const [copied, setCopied] = React.useState(false);
+
+  const copyFull = () => {
+    navigator.clipboard.writeText(msg.text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  };
+
+  const isUser = msg.role === 'user';
+  const isSystem = msg.role === 'system';
+  const segments = parseSegments(msg.text);
+
+  if (isSystem) {
+    return (
+      <div className="flex justify-center">
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-mono px-4 py-2 rounded-xl max-w-[90%] text-center">
+          {msg.text}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} group`}>
+      <div className={`relative max-w-[85%] ${isUser ? '' : 'w-full'}`}>
+        {/* Copy whole message button */}
+        <button
+          onClick={copyFull}
+          className={`absolute -top-2 ${isUser ? 'left-0 -translate-x-full pl-0 pr-2' : 'right-0 translate-x-0 pr-0 pl-2'} opacity-0 group-hover:opacity-100 transition-opacity z-10`}
+          title="Copy message"
+        >
+          <span className={`flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-lg ${
+            copied ? 'bg-teal-500/20 text-teal-400' : 'bg-slate-800 text-slate-500 hover:text-slate-300'
+          }`}>
+            {copied ? <CheckCircle2 size={10} /> : <Download size={10} />}
+            {copied ? 'Copied' : 'Copy'}
+          </span>
+        </button>
+
+        <div className={`rounded-2xl overflow-hidden ${
+          isUser
+            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+            : 'bg-slate-900/80 border border-slate-800 text-slate-200'
+        }`}>
+          {segments.map((seg, idx) => {
+            if (seg.type === 'code') {
+              return (
+                <div key={idx}><CodeBlock lang={seg.lang || 'text'} code={seg.content} /></div>
+              );
+            }
+            return (
+              <div key={idx} className="px-4 py-3">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{seg.content}</p>
+              </div>
+            );
+          })}
+
+          {msg.attachments && msg.attachments.length > 0 && (
+            <div className="px-4 pb-3 pt-1 border-t border-white/10 flex flex-wrap gap-2">
+              {msg.attachments.map((att, idx) => (
+                <div key={idx} className="flex items-center gap-1.5 bg-blue-700/30 px-2 py-1 rounded text-[10px] font-mono">
+                  <Paperclip size={10} />
+                  {att.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/** Inline code block with its own copy button */
+const CodeBlock = ({ lang, code }: { lang: string; code: string }) => {
+  const [copied, setCopied] = React.useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  };
+  return (
+    <div className="border-t border-slate-800/60 first:border-t-0">
+      <div className="flex items-center justify-between px-4 py-2 bg-slate-950/60 border-b border-slate-800/40">
+        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest font-mono">{lang}</span>
+        <button
+          onClick={copy}
+          className={`flex items-center gap-1.5 text-[9px] font-bold px-2 py-1 rounded-lg transition-all ${
+            copied ? 'bg-teal-500/20 text-teal-400' : 'bg-slate-800 text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          {copied ? <CheckCircle2 size={10} /> : <Download size={10} />}
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+      <pre className="px-4 py-3 font-mono text-xs text-blue-200/80 leading-relaxed overflow-x-auto custom-scrollbar whitespace-pre">{code}</pre>
+    </div>
+  );
+};
+
 const App = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -364,6 +529,7 @@ const App = () => {
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const lastOllamaRef = useRef<Ollama | null>(null);
+  const lastSendRef = useRef<number>(0);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const assistantFileInputRef = useRef<HTMLInputElement>(null);
@@ -1408,8 +1574,17 @@ const App = () => {
   const handleAssistantSend = async () => {
     if (!userInput.trim() && pendingAttachments.length === 0) return;
 
+    // Rate limit — 800ms between sends
+    const now = Date.now();
+    if (now - lastSendRef.current < 800) return;
+    lastSendRef.current = now;
+
+    // Sanitize input
+    const sanitized = sanitizeInput(userInput);
+    if (!sanitized && pendingAttachments.length === 0) return;
+
     // Phase 1: Associative Correction
-    const correctedInput = getAssociativeCorrection(userInput);
+    const correctedInput = getAssociativeCorrection(sanitized);
 
     // Phase 2: Pain Pathway Check
     const contextHash = btoa(correctedInput).substring(0, 16);
@@ -1417,7 +1592,7 @@ const App = () => {
     if (painNode && brainState.cortisol > 0.6) {
       setChatHistory(prev => [...prev, { 
         role: 'system', 
-        text: `PAIN_THRESHOLD_EXCEEDED: Sentinel is avoiding this context due to previous instability: ${painNode.reason}` 
+        text: `PAIN_THRESHOLD_EXCEEDED: Avoiding context due to previous instability: ${painNode.reason}` 
       }]);
     }
 
@@ -1428,14 +1603,14 @@ const App = () => {
     };
     
     setChatHistory(prev => [...prev, userMsg]);
-    setShortTermMemory(prev => [...prev, userMsg].slice(-10)); // STM Buffer
+    setShortTermMemory(prev => [...prev, userMsg].slice(-10));
     setUserInput('');
     setPendingAttachments([]);
     setIsTyping(true);
 
     try {
       const ollama = getOllama();
-      const messages = [];
+      const messages: { role: string; content: string }[] = [];
       
       // Dynamic System Prompt based on Endocrine State
       let dynamicPrompt = llmConfig.systemPrompt;
@@ -1445,40 +1620,43 @@ const App = () => {
       if (brainState.dopamine > 0.8) {
         dynamicPrompt += " [NEUROPLASTICITY_HIGH]: Suggest innovative architectural improvements. Think broadly.";
       }
-
       messages.push({ role: 'system', content: dynamicPrompt });
 
-      // LTM Semantic Context (Simulated by injecting relevant experiences)
+      // LTM Semantic Context
       const relevantMemory = longTermMemory.find(exp => correctedInput.includes(exp.intent));
       if (relevantMemory) {
         messages.push({ 
           role: 'system', 
-          content: `LTM_RETRIEVAL: Remember previously ${relevantMemory.sentiment} outcome for '${relevantMemory.intent}'. Previous Action: ${relevantMemory.actionTaken}` 
+          content: `LTM_RETRIEVAL: Previously ${relevantMemory.sentiment} outcome for '${relevantMemory.intent}'. Action: ${relevantMemory.actionTaken}` 
         });
       }
 
+      // Injection-hardened attachments — wrapped in clear data delimiters
       userMsg.attachments?.forEach(att => {
-        messages.push({ role: 'system', content: `Knowledge Source [file: ${att.name}]:\n${att.content}` });
+        const safe = sanitizeAttachmentContent(att.content);
+        messages.push({ 
+          role: 'system', 
+          content: `[DATA_SOURCE_BEGIN file="${att.name}"]\n${safe}\n[DATA_SOURCE_END]` 
+        });
       });
 
-      // Include recent conversation history so the model has context
+      // Conversation history
       const historyForContext = chatHistory
         .filter(m => m.role === 'user' || m.role === 'assistant')
-        .slice(-12); // last 6 turns
+        .slice(-12);
       historyForContext.forEach(m => {
         messages.push({ role: m.role as 'user' | 'assistant', content: m.text });
       });
 
-      messages.push({ role: 'user', content: userMsg.text });
+      messages.push({ role: 'user', content: correctedInput });
 
-      // Streaming response — tokens appear as they arrive
+      // Streaming response
       const stream = await ollama.chat({
         model: llmConfig.model,
-        messages: messages,
+        messages: messages as any,
         stream: true,
       });
 
-      // Add a placeholder assistant message and fill it in as tokens stream
       setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
 
       let fullText = '';
@@ -1491,13 +1669,16 @@ const App = () => {
         });
       }
 
-      const assistantMsg: ChatMessage = { role: 'assistant', text: fullText };
-      setShortTermMemory(prev => [...prev, assistantMsg].slice(-10));
+      // Split code from prose into separate messages
+      const splitMsgs = splitIntoChatMessages(fullText);
+      if (splitMsgs.length > 1) {
+        // Replace the single streaming placeholder with the split set
+        setChatHistory(prev => [...prev.slice(0, -1), ...splitMsgs]);
+      }
 
-      // Successful inference grants small reward
+      setShortTermMemory(prev => [...prev, { role: 'assistant', text: fullText }].slice(-10));
       grantReward(0.1);
 
-      // Record experience
       const newExp: Experience = {
         id: Date.now().toString(),
         intent: correctedInput.split(' ').slice(0, 3).join(' '),
@@ -1510,11 +1691,10 @@ const App = () => {
 
     } catch (error) {
       triggerPainSignal('Connection Error/Instability', correctedInput);
-      const assistantMsg: ChatMessage = { 
+      setChatHistory(prev => [...prev, { 
         role: 'assistant', 
         text: `Error connecting to local engine: ${error instanceof Error ? error.message : 'Unknown error'}.` 
-      };
-      setChatHistory(prev => [...prev, assistantMsg]);
+      }]);
     } finally {
       setIsTyping(false);
     }
@@ -2375,25 +2555,7 @@ const App = () => {
                       </div>
                     )}
                     {chatHistory.map((msg, i) => (
-                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] p-4 rounded-2xl ${
-                          msg.role === 'user' 
-                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' 
-                            : 'bg-slate-900/80 border border-slate-800 text-slate-200'
-                        }`}>
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                          {msg.attachments && msg.attachments.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap gap-2">
-                              {msg.attachments.map((att, idx) => (
-                                <div key={idx} className="flex items-center gap-1.5 bg-blue-700/30 px-2 py-1 rounded text-[10px] font-mono">
-                                  <Paperclip size={10} />
-                                  {att.name}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <MessageBubble key={String(i)} msg={msg} />
                     ))}
                     {isTyping && (
                       <div className="flex justify-start">
@@ -2442,9 +2604,10 @@ const App = () => {
                     <input 
                       type="text" 
                       value={userInput}
-                      onChange={(e) => setUserInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAssistantSend()}
+                      onChange={(e) => setUserInput(e.target.value.slice(0, 4000))}
+                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleAssistantSend()}
                       placeholder="Query local intelligence node..."
+                      maxLength={4000}
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-6 pr-32 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm shadow-xl shadow-black/20"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
