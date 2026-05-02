@@ -265,6 +265,8 @@ const App = () => {
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'assistant' | 'notes' | 'terminal' | 'sentinel' | 'workspace' | 'agents'>('dashboard');
   const [workspaceTab, setWorkspaceTab] = useState<'explorer' | 'git' | 'tasks'>('explorer');
+  const [mobileWorkspaceView, setMobileWorkspaceView] = useState<'panel' | 'editor'>('panel');
+  const [savedFeedback, setSavedFeedback] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [targetUploadFolderId, setTargetUploadFolderId] = useState<string | null>(null);
@@ -853,6 +855,17 @@ const App = () => {
   const deleteFile = (id: string) => {
     setFiles(prev => prev.filter(f => f.id !== id));
     if (activeFileId === id) setActiveFileId(null);
+  };
+
+  const saveActiveFile = async () => {
+    if (!activeFileId) return;
+    // localStorage is already kept in sync via useEffect — explicitly flush to disk if mounted
+    if (dirHandle && dirLinkedProjectId) {
+      const file = files.find(f => f.id === activeFileId);
+      if (file) await saveFileToDisk(file);
+    }
+    setSavedFeedback(true);
+    setTimeout(() => setSavedFeedback(false), 1800);
   };
 
   const formatCode = async () => {
@@ -2763,31 +2776,48 @@ const App = () => {
               </div>
 
               {activeProjectId ? (
-                <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
-                  {/* Sidebar/Panel Selector */}
-                  <div className="w-12 shrink-0 flex flex-col items-center gap-4 py-4 bg-slate-900 border border-slate-800 rounded-3xl">
+                <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-0">
+                  {/* Panel Selector — horizontal on mobile, vertical strip on desktop */}
+                  <div className="flex flex-row lg:flex-col shrink-0 items-center gap-2 p-2 bg-slate-900 border border-slate-800 rounded-2xl lg:rounded-3xl lg:w-12 lg:py-4">
                     <button 
-                      onClick={() => setWorkspaceTab('explorer')}
-                      className={`p-2 rounded-xl transition-all ${workspaceTab === 'explorer' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
+                      onClick={() => { setWorkspaceTab('explorer'); setMobileWorkspaceView('panel'); }}
+                      title="Files"
+                      className={`flex-1 lg:flex-none p-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${workspaceTab === 'explorer' && mobileWorkspaceView === 'panel' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
                     >
                       <Folder size={18} />
+                      <span className="text-[10px] font-bold lg:hidden">Files</span>
                     </button>
                     <button 
-                      onClick={() => setWorkspaceTab('git')}
-                      className={`p-2 rounded-xl transition-all ${workspaceTab === 'git' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
+                      onClick={() => { setWorkspaceTab('git'); setMobileWorkspaceView('panel'); }}
+                      title="Git"
+                      className={`flex-1 lg:flex-none p-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${workspaceTab === 'git' && mobileWorkspaceView === 'panel' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
                     >
                       <GitBranch size={18} />
+                      <span className="text-[10px] font-bold lg:hidden">Git</span>
                     </button>
                     <button 
-                      onClick={() => setWorkspaceTab('tasks')}
-                      className={`p-2 rounded-xl transition-all ${workspaceTab === 'tasks' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
+                      onClick={() => { setWorkspaceTab('tasks'); setMobileWorkspaceView('panel'); }}
+                      title="Tasks"
+                      className={`flex-1 lg:flex-none p-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${workspaceTab === 'tasks' && mobileWorkspaceView === 'panel' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
                     >
                       <CheckCircle2 size={18} />
+                      <span className="text-[10px] font-bold lg:hidden">Tasks</span>
                     </button>
+                    {/* Editor tab — mobile only shortcut */}
+                    {activeFileId && (
+                      <button 
+                        onClick={() => setMobileWorkspaceView('editor')}
+                        title="Editor"
+                        className={`flex-1 lg:hidden p-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${mobileWorkspaceView === 'editor' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
+                      >
+                        <Code size={18} />
+                        <span className="text-[10px] font-bold">Editor</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Dynamic Workspace Panel */}
-                  <div className="w-full lg:w-72 flex flex-col shrink-0 min-h-0">
+                  <div className={`w-full lg:w-72 flex flex-col shrink-0 min-h-0 ${mobileWorkspaceView === 'editor' ? 'hidden lg:flex' : 'flex'}`}>
                     {workspaceTab === 'explorer' ? (
                       <div className="flex-1 bg-slate-900/40 border border-slate-800 rounded-3xl p-4 flex flex-col min-h-0">
                         {/* ... existing explorer code ... */}
@@ -2926,7 +2956,7 @@ const App = () => {
                                         className={`group flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl cursor-pointer transition-all ${
                                           activeFileId === file.id ? 'bg-blue-600/10 text-blue-400' : 'hover:bg-slate-800/50 text-slate-500'
                                         }`}
-                                        onClick={() => setActiveFileId(file.id)}
+                                        onClick={() => { setActiveFileId(file.id); setMobileWorkspaceView('editor'); }}
                                       >
                                         <div className="flex items-center gap-2 truncate">
                                           <FileCode size={14} className={activeFileId === file.id ? 'text-blue-400' : 'text-slate-600'} />
@@ -2951,7 +2981,7 @@ const App = () => {
                               className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all ${
                                 activeFileId === file.id ? 'bg-blue-600/10 text-blue-400' : 'hover:bg-slate-800/50 text-slate-500'
                               }`}
-                              onClick={() => setActiveFileId(file.id)}
+                              onClick={() => { setActiveFileId(file.id); setMobileWorkspaceView('editor'); }}
                             >
                               <div className="flex items-center gap-2 truncate">
                                 <FileCode size={14} className={activeFileId === file.id ? 'text-blue-400' : 'text-slate-600'} />
@@ -3151,12 +3181,19 @@ const App = () => {
                   </div>
 
                   {/* Editor Area */}
-                  <div className="flex-1 flex flex-col gap-6 min-w-0">
+                  <div className={`flex-1 flex flex-col gap-4 lg:gap-6 min-w-0 ${mobileWorkspaceView === 'panel' ? 'hidden lg:flex' : 'flex'}`}>
                     {activeFileId ? (
                       <>
                         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 lg:p-6 flex flex-col min-h-0 shadow-lg relative">
-                           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 lg:mb-6">
                               <div className="flex items-center gap-3 w-full sm:w-auto">
+                                 {/* Mobile back button */}
+                                 <button
+                                   onClick={() => setMobileWorkspaceView('panel')}
+                                   className="lg:hidden p-2 text-slate-500 hover:text-white bg-slate-800 rounded-xl"
+                                 >
+                                   <ArrowLeft size={16} />
+                                 </button>
                                  <div className="bg-blue-600/10 p-2 rounded-xl">
                                     <FileCode size={18} className="text-blue-500" />
                                  </div>
@@ -3164,42 +3201,54 @@ const App = () => {
                                    type="text"
                                    value={files.find(f => f.id === activeFileId)?.name || ''}
                                    onChange={(e) => renameFile(activeFileId!, e.target.value)}
-                                   className="bg-transparent border-none focus:outline-none font-bold text-slate-200 text-sm"
+                                   className="bg-transparent border-none focus:outline-none font-bold text-slate-200 text-sm min-w-0 flex-1"
                                  />
                               </div>
 
-                              <div className="flex flex-wrap items-center gap-2">
+                              {/* Action buttons — scrollable row on mobile */}
+                              <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto custom-scrollbar pb-1 sm:pb-0">
+                                 <button 
+                                   onClick={saveActiveFile}
+                                   className={`shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${
+                                     savedFeedback 
+                                       ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' 
+                                       : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                                   }`}
+                                 >
+                                   {savedFeedback ? <CheckCircle2 size={12} /> : <Save size={12} />}
+                                   {savedFeedback ? 'Saved' : 'Save'}
+                                 </button>
                                  <button 
                                    onClick={() => aiCodeAction('discuss', activeFileId!)}
-                                   className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="shrink-0 px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <MessageSquare size={12} />
                                    Discuss
                                  </button>
                                  <button 
                                    onClick={formatCode}
-                                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <Sparkles size={12} />
                                    Format
                                  </button>
                                  <button 
                                    onClick={() => aiCodeAction('analyze', activeFileId!)}
-                                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <Search size={12} />
                                    Analyze
                                  </button>
                                  <button 
                                    onClick={() => aiCodeAction('refactor', activeFileId!)}
-                                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <Wand2 size={12} />
                                    Refactor
                                  </button>
                                  <button 
                                    onClick={() => aiCodeAction('debug', activeFileId!)}
-                                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <Bug size={12} />
                                    Debug
@@ -3210,7 +3259,7 @@ const App = () => {
                                       setTerminalCode(content);
                                       runCode();
                                    }}
-                                   className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
+                                   className="shrink-0 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
                                  >
                                    <Play size={12} />
                                    Run
@@ -3246,6 +3295,13 @@ const App = () => {
                       <div className="flex-1 bg-slate-900/20 border border-dashed border-slate-800 rounded-3xl flex flex-col items-center justify-center text-slate-600 p-8 text-center">
                         <FileCode size={48} className="mb-4 opacity-20" />
                         <p className="text-sm font-medium">Select or create a file to start developing.</p>
+                        <button
+                          onClick={() => setMobileWorkspaceView('panel')}
+                          className="lg:hidden mt-4 px-4 py-2 bg-slate-800 text-slate-400 rounded-xl text-xs font-bold flex items-center gap-2"
+                        >
+                          <Folder size={14} />
+                          Browse Files
+                        </button>
                       </div>
                     )}
                   </div>
