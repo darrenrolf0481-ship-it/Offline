@@ -970,10 +970,31 @@ const App = () => {
   };
 
   const deleteProject = (id: string) => {
-    setProjects(prev => prev.filter(p => p.id !== id));
-    setFiles(prev => prev.filter(f => f.projectId !== id));
-    setFolders(prev => prev.filter(f => f.projectId !== id));
-    if (activeProjectId === id) setActiveProjectId(null);
+    const newProjects = projects.filter(p => p.id !== id);
+    const newFiles = files.filter(f => f.projectId !== id);
+    const newFolders = folders.filter(f => f.projectId !== id);
+    // Write directly to localStorage immediately — don't rely on async useEffect
+    localStorage.setItem('hub_projects', JSON.stringify(newProjects));
+    localStorage.setItem('hub_files', JSON.stringify(newFiles));
+    localStorage.setItem('hub_folders', JSON.stringify(newFolders));
+    setProjects(newProjects);
+    setFiles(newFiles);
+    setFolders(newFolders);
+    if (activeProjectId === id) setActiveProjectId(newProjects.length > 0 ? newProjects[0].id : null);
+  };
+
+  const hardResetWorkspace = () => {
+    const keys = ['hub_projects','hub_files','hub_folders','hub_git','hub_tasks','hub_agents','hub_agent_runs'];
+    keys.forEach(k => localStorage.removeItem(k));
+    setProjects([]);
+    setFiles([]);
+    setFolders([]);
+    setGitStates([]);
+    setTasks([]);
+    setAgents([]);
+    setAgentRuns([]);
+    setActiveProjectId(null);
+    setActiveFileId(null);
   };
 
   const addFolder = (projectId: string) => {
@@ -3157,13 +3178,24 @@ const App = () => {
                             </div>
                           ))}
                         </div>
-                        <div className="mt-4 pt-4 border-t border-slate-800">
+                        <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
                            <button 
                              onClick={() => deleteProject(activeProjectId!)}
                              className="w-full py-2 text-xs font-bold text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all flex items-center justify-center gap-2"
                            >
                              <Trash2 size={12} />
                              Terminate Project
+                           </button>
+                           <button 
+                             onClick={() => {
+                               if (confirm('Hard reset clears ALL projects and files from storage. Cannot be undone.')) {
+                                 hardResetWorkspace();
+                               }
+                             }}
+                             className="w-full py-2 text-xs font-bold text-slate-600 hover:text-rose-400 hover:bg-rose-500/5 rounded-xl transition-all flex items-center justify-center gap-2"
+                           >
+                             <AlertCircle size={12} />
+                             Hard Reset Storage
                            </button>
                         </div>
                       </div>
