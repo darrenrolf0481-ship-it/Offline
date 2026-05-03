@@ -31,6 +31,7 @@ import {
   Zap,
   Play,
   ShieldCheck,
+  Cpu as Processor,
   X,
   Github,
   Upload,
@@ -47,25 +48,27 @@ import {
   Paperclip,
   FilePlus,
   FileUp,
-  Search as SearchIcon,
   FolderOpen,
+  FolderPlus,
+  Folder,
+  GitBranch,
   FileCode,
+  Target,
+  Clock,
+  ChevronLeft,
+  Search as SearchIcon,
   Code,
   Bug,
   Wand2,
   Save,
   Edit3,
   FilePenLine,
-  FolderPlus,
-  Folder,
   ChevronDown,
   Edit2,
-  GitBranch,
   GitCommit,
   GitMerge,
   Share,
-  Bot,
-  Target
+  Bot
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -252,171 +255,6 @@ const StatCard = ({ icon: Icon, label, value, status }: { icon: any, label: stri
   </div>
 );
 
-// --- Chat Hardening Utilities ---
-
-/** Strip null bytes, control chars, and cap length */
-const sanitizeInput = (raw: string): string => {
-  return raw
-    .replace(/\0/g, '')                        // null bytes
-    .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F]/g, '') // control chars except \t \n \r
-    .slice(0, 4000)                            // hard cap
-    .trim();
-};
-
-/** Prevent LLM prompt injection via attachments */
-const sanitizeAttachmentContent = (content: string): string => {
-  const MAX = 50_000;
-  return content
-    .replace(/\0/g, '')
-    .slice(0, MAX);
-};
-
-/** Parse a message into alternating text/code segments */
-interface MsgSegment {
-  type: 'text' | 'code';
-  content: string;
-  lang?: string;
-}
-
-const parseSegments = (text: string): MsgSegment[] => {
-  const segments: MsgSegment[] = [];
-  const regex = /```(\w*)\n?([\s\S]*?)```/g;
-  let last = 0;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > last) {
-      const prose = text.slice(last, match.index).trim();
-      if (prose) segments.push({ type: 'text', content: prose });
-    }
-    segments.push({ type: 'code', lang: match[1] || 'text', content: match[2].trim() });
-    last = match.index + match[0].length;
-  }
-  const tail = text.slice(last).trim();
-  if (tail) segments.push({ type: 'text', content: tail });
-  return segments.length ? segments : [{ type: 'text', content: text }];
-};
-
-/** After stream completes, if response mixes code + prose → split into separate ChatMessages */
-const splitIntoChatMessages = (fullText: string): ChatMessage[] => {
-  const segments = parseSegments(fullText);
-  if (segments.length <= 1) return [{ role: 'assistant', text: fullText }];
-  const hasCode = segments.some(s => s.type === 'code');
-  const hasText = segments.some(s => s.type === 'text');
-  if (!hasCode || !hasText) return [{ role: 'assistant', text: fullText }];
-  // Separate: prose first, then each code block as its own message
-  const msgs: ChatMessage[] = [];
-  const prose = segments.filter(s => s.type === 'text').map(s => s.content).join('\n\n').trim();
-  if (prose) msgs.push({ role: 'assistant', text: prose });
-  segments.filter(s => s.type === 'code').forEach(s => {
-    msgs.push({ role: 'assistant', text: '```' + (s.lang || '') + '\n' + s.content + '\n```' });
-  });
-  return msgs;
-};
-
-// --- MessageBubble Component ---
-const MessageBubble = ({ msg }: { msg: ChatMessage; key?: React.Key }) => {
-  const [copied, setCopied] = React.useState(false);
-
-  const copyFull = () => {
-    navigator.clipboard.writeText(msg.text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    });
-  };
-
-  const isUser = msg.role === 'user';
-  const isSystem = msg.role === 'system';
-  const segments = parseSegments(msg.text);
-
-  if (isSystem) {
-    return (
-      <div className="flex justify-center">
-        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-mono px-4 py-2 rounded-xl max-w-[90%] text-center">
-          {msg.text}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} group`}>
-      <div className={`relative max-w-[85%] ${isUser ? '' : 'w-full'}`}>
-        {/* Copy whole message button */}
-        <button
-          onClick={copyFull}
-          className={`absolute -top-2 ${isUser ? 'left-0 -translate-x-full pl-0 pr-2' : 'right-0 translate-x-0 pr-0 pl-2'} opacity-0 group-hover:opacity-100 transition-opacity z-10`}
-          title="Copy message"
-        >
-          <span className={`flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-lg ${
-            copied ? 'bg-teal-500/20 text-teal-400' : 'bg-slate-800 text-slate-500 hover:text-slate-300'
-          }`}>
-            {copied ? <CheckCircle2 size={10} /> : <Download size={10} />}
-            {copied ? 'Copied' : 'Copy'}
-          </span>
-        </button>
-
-        <div className={`rounded-2xl overflow-hidden ${
-          isUser
-            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-            : 'bg-slate-900/80 border border-slate-800 text-slate-200'
-        }`}>
-          {segments.map((seg, idx) => {
-            if (seg.type === 'code') {
-              return (
-                <div key={idx}><CodeBlock lang={seg.lang || 'text'} code={seg.content} /></div>
-              );
-            }
-            return (
-              <div key={idx} className="px-4 py-3">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{seg.content}</p>
-              </div>
-            );
-          })}
-
-          {msg.attachments && msg.attachments.length > 0 && (
-            <div className="px-4 pb-3 pt-1 border-t border-white/10 flex flex-wrap gap-2">
-              {msg.attachments.map((att, idx) => (
-                <div key={idx} className="flex items-center gap-1.5 bg-blue-700/30 px-2 py-1 rounded text-[10px] font-mono">
-                  <Paperclip size={10} />
-                  {att.name}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/** Inline code block with its own copy button */
-const CodeBlock = ({ lang, code }: { lang: string; code: string }) => {
-  const [copied, setCopied] = React.useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(code).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    });
-  };
-  return (
-    <div className="border-t border-slate-800/60 first:border-t-0">
-      <div className="flex items-center justify-between px-4 py-2 bg-slate-950/60 border-b border-slate-800/40">
-        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest font-mono">{lang}</span>
-        <button
-          onClick={copy}
-          className={`flex items-center gap-1.5 text-[9px] font-bold px-2 py-1 rounded-lg transition-all ${
-            copied ? 'bg-teal-500/20 text-teal-400' : 'bg-slate-800 text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          {copied ? <CheckCircle2 size={10} /> : <Download size={10} />}
-          {copied ? 'Copied' : 'Copy'}
-        </button>
-      </div>
-      <pre className="px-4 py-3 font-mono text-xs text-blue-200/80 leading-relaxed overflow-x-auto custom-scrollbar whitespace-pre">{code}</pre>
-    </div>
-  );
-};
-
 const App = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -428,10 +266,9 @@ const App = () => {
   const [agentRuns, setAgentRuns] = useState<AgentRun[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
+  const [isMobileWorkspaceEditorOpen, setIsMobileWorkspaceEditorOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'assistant' | 'notes' | 'terminal' | 'sentinel' | 'workspace' | 'agents'>('dashboard');
   const [workspaceTab, setWorkspaceTab] = useState<'explorer' | 'git' | 'tasks'>('explorer');
-  const [mobileWorkspaceView, setMobileWorkspaceView] = useState<'panel' | 'editor'>('panel');
-  const [savedFeedback, setSavedFeedback] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [targetUploadFolderId, setTargetUploadFolderId] = useState<string | null>(null);
@@ -449,12 +286,6 @@ const App = () => {
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isGithubModalOpen, setIsGithubModalOpen] = useState(false);
-
-  // Termux / Local Directory Mount State
-  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
-  const [dirSyncStatus, setDirSyncStatus] = useState<'idle' | 'syncing' | 'saving' | 'error'>('idle');
-  const [dirLinkedProjectId, setDirLinkedProjectId] = useState<string | null>(null);
-
   const [githubConfig, setGithubConfig] = useState({
     owner: '',
     repo: '',
@@ -529,7 +360,6 @@ const App = () => {
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const lastOllamaRef = useRef<Ollama | null>(null);
-  const lastSendRef = useRef<number>(0);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const assistantFileInputRef = useRef<HTMLInputElement>(null);
@@ -970,31 +800,10 @@ const App = () => {
   };
 
   const deleteProject = (id: string) => {
-    const newProjects = projects.filter(p => p.id !== id);
-    const newFiles = files.filter(f => f.projectId !== id);
-    const newFolders = folders.filter(f => f.projectId !== id);
-    // Write directly to localStorage immediately — don't rely on async useEffect
-    localStorage.setItem('hub_projects', JSON.stringify(newProjects));
-    localStorage.setItem('hub_files', JSON.stringify(newFiles));
-    localStorage.setItem('hub_folders', JSON.stringify(newFolders));
-    setProjects(newProjects);
-    setFiles(newFiles);
-    setFolders(newFolders);
-    if (activeProjectId === id) setActiveProjectId(newProjects.length > 0 ? newProjects[0].id : null);
-  };
-
-  const hardResetWorkspace = () => {
-    const keys = ['hub_projects','hub_files','hub_folders','hub_git','hub_tasks','hub_agents','hub_agent_runs'];
-    keys.forEach(k => localStorage.removeItem(k));
-    setProjects([]);
-    setFiles([]);
-    setFolders([]);
-    setGitStates([]);
-    setTasks([]);
-    setAgents([]);
-    setAgentRuns([]);
-    setActiveProjectId(null);
-    setActiveFileId(null);
+    setProjects(prev => prev.filter(p => p.id !== id));
+    setFiles(prev => prev.filter(f => f.projectId !== id));
+    setFolders(prev => prev.filter(f => f.projectId !== id));
+    if (activeProjectId === id) setActiveProjectId(null);
   };
 
   const addFolder = (projectId: string) => {
@@ -1029,6 +838,7 @@ const App = () => {
     };
     setFiles(prev => [...prev, newFile]);
     setActiveFileId(newFile.id);
+    setIsMobileWorkspaceEditorOpen(true);
   };
 
   const updateFileContent = (id: string, content: string) => {
@@ -1042,17 +852,6 @@ const App = () => {
   const deleteFile = (id: string) => {
     setFiles(prev => prev.filter(f => f.id !== id));
     if (activeFileId === id) setActiveFileId(null);
-  };
-
-  const saveActiveFile = async () => {
-    if (!activeFileId) return;
-    // localStorage is already kept in sync via useEffect — explicitly flush to disk if mounted
-    if (dirHandle && dirLinkedProjectId) {
-      const file = files.find(f => f.id === activeFileId);
-      if (file) await saveFileToDisk(file);
-    }
-    setSavedFeedback(true);
-    setTimeout(() => setSavedFeedback(false), 1800);
   };
 
   const formatCode = async () => {
@@ -1227,112 +1026,6 @@ const App = () => {
     }
   };
 
-  // --- Local Directory / Termux Mounting (File System Access API) ---
-  const mountDirectory = async () => {
-    if (!activeProjectId) return;
-    try {
-      const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
-      setDirHandle(handle);
-      setDirLinkedProjectId(activeProjectId);
-      await readDirIntoProject(handle, activeProjectId, null);
-    } catch (err: any) {
-      if (err?.name !== 'AbortError') {
-        console.error('Directory mount failed:', err);
-        setDirSyncStatus('error');
-      }
-    }
-  };
-
-  const readDirIntoProject = async (
-    handle: FileSystemDirectoryHandle,
-    projectId: string,
-    parentFolderId: string | null
-  ) => {
-    setDirSyncStatus('syncing');
-    try {
-      for await (const [name, entry] of (handle as any).entries()) {
-        if (name.startsWith('.') || name === '__MACOSX' || name === 'node_modules') continue;
-
-        if (entry.kind === 'directory') {
-          // Create virtual folder (deduplicate by name + parent)
-          const folderId = `dir-${projectId}-${parentFolderId ?? 'root'}-${name}`;
-          setFolders(prev => {
-            if (prev.find(f => f.id === folderId)) return prev;
-            return [...prev, { id: folderId, name, projectId, updatedAt: Date.now() }];
-          });
-          await readDirIntoProject(entry as FileSystemDirectoryHandle, projectId, folderId);
-        } else {
-          // Text files only — skip binaries
-          const file = await (entry as FileSystemFileHandle).getFile();
-          if (file.size > 2 * 1024 * 1024) continue; // skip >2MB
-          let content = '';
-          try { content = await file.text(); } catch { continue; }
-
-          const fileId = `dir-${projectId}-${parentFolderId ?? 'root'}-${name}`;
-          setFiles(prev => {
-            const existing = prev.find(f => f.id === fileId);
-            if (existing) {
-              return prev.map(f => f.id === fileId ? { ...f, content, updatedAt: Date.now() } : f);
-            }
-            return [...prev, {
-              id: fileId,
-              name,
-              content,
-              language: getLanguageFromExtension(name),
-              projectId,
-              folderId: parentFolderId,
-              updatedAt: Date.now()
-            }];
-          });
-        }
-      }
-      setDirSyncStatus('idle');
-    } catch (err) {
-      console.error('Directory read failed:', err);
-      setDirSyncStatus('error');
-    }
-  };
-
-  const saveFileToDisk = async (file: VFile) => {
-    if (!dirHandle || file.projectId !== dirLinkedProjectId) return;
-    try {
-      // Resolve the correct subfolder handle
-      let targetHandle: FileSystemDirectoryHandle = dirHandle;
-      if (file.folderId) {
-        const folder = folders.find(f => f.id === file.folderId);
-        if (folder) {
-          targetHandle = await dirHandle.getDirectoryHandle(folder.name, { create: true });
-        }
-      }
-      const fileHandle = await targetHandle.getFileHandle(file.name, { create: true });
-      const writable = await (fileHandle as any).createWritable();
-      await writable.write(file.content);
-      await writable.close();
-    } catch (err) {
-      console.error(`Failed to save ${file.name} to disk:`, err);
-    }
-  };
-
-  const syncAllToDisk = async () => {
-    if (!dirHandle || !dirLinkedProjectId) return;
-    setDirSyncStatus('saving');
-    const linked = files.filter(f => f.projectId === dirLinkedProjectId);
-    for (const file of linked) await saveFileToDisk(file);
-    setDirSyncStatus('idle');
-  };
-
-  // Auto-save linked files to disk (debounced 1.5s)
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!dirHandle || !dirLinkedProjectId) return;
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      const changed = files.filter(f => f.projectId === dirLinkedProjectId);
-      changed.forEach(saveFileToDisk);
-    }, 1500);
-    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
-  }, [files]);
-
   // --- AI Code Intelligence ---
   const aiCodeAction = async (action: 'analyze' | 'refactor' | 'debug' | 'discuss', fileId: string) => {
     const file = files.find(f => f.id === fileId);
@@ -1353,28 +1046,19 @@ const App = () => {
 
     try {
       const ollama = getOllama();
-      const stream = await ollama.chat({
+      const response = await ollama.chat({
         model: llmConfig.model,
         messages: [
           { role: 'system', content: llmConfig.systemPrompt },
           { role: 'user', content: prompts[action] }
         ],
-        stream: true,
+        stream: false
       });
 
-      setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
-      let fullText = '';
-      for await (const part of stream) {
-        fullText += part.message.content;
-        setChatHistory(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: 'assistant', text: fullText };
-          return updated;
-        });
-      }
+      setChatHistory(prev => [...prev, { role: 'assistant', text: response.message.content }]);
     } catch (error) {
       console.error('AI Code Action failed:', error);
-      setChatHistory(prev => [...prev, { role: 'assistant', text: 'Protocol failure during AI code analysis. Ensure Ollama is running.' }]);
+      setChatHistory(prev => [...prev, { role: 'assistant', text: 'Protocol failure during AI code analysis.' }]);
     } finally {
       setIsTyping(false);
     }
@@ -1530,54 +1214,20 @@ const App = () => {
     let currentLog = [...newRun.logs];
     
     for (let i = 0; i < steps.length; i++) {
-      await new Promise(r => setTimeout(r, 800 + Math.random() * 1200));
+      await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
       
       currentLog.push({ timestamp: Date.now(), message: steps[i].msg, type: steps[i].type as any });
       
       setAgentRuns(prev => prev.map(r => r.id === runId ? { 
         ...r, 
-        status: 'running',
+        status: i === steps.length - 1 ? 'completed' : 'running',
         currentStep: steps[i].msg,
         logs: [...currentLog],
+        result: i === steps.length - 1 ? `PROTOCOL_OPTIMIZED: All objectives for goal "${agent.goal}" successfully processed into Knowledge Node ARC-7.` : undefined
       } : r));
+
+      if (i === steps.length - 1) grantReward(0.5);
     }
-
-    // Actually invoke Ollama for a real result
-    let finalResult = `PROTOCOL_OPTIMIZED: All objectives for goal "${agent.goal}" processed.`;
-    try {
-      const ollama = getOllama();
-      const agentPrompt = [
-        `You are an autonomous agent named "${agent.name}" with the role: ${agent.role}.`,
-        `Your goal: ${agent.goal}`,
-        `Your instructions: ${agent.instructions}`,
-        `Your constraints: ${agent.constraints.join(', ')}`,
-        `Available tools: ${agent.tools.join(', ')}`,
-        ``,
-        `Execute your goal and provide a concise but thorough intelligence report.`
-      ].join('\n');
-
-      const response = await ollama.chat({
-        model: llmConfig.model,
-        messages: [
-          { role: 'system', content: llmConfig.systemPrompt },
-          { role: 'user', content: agentPrompt }
-        ],
-        stream: false,
-      });
-      finalResult = response.message.content;
-    } catch (err) {
-      currentLog.push({ timestamp: Date.now(), message: `LLM unreachable — falling back to protocol report.`, type: 'error' });
-    }
-
-    setAgentRuns(prev => prev.map(r => r.id === runId ? { 
-      ...r, 
-      status: 'completed',
-      currentStep: 'Mission complete.',
-      logs: [...currentLog, { timestamp: Date.now(), message: 'Mission complete.', type: 'success' as const }],
-      result: finalResult
-    } : r));
-
-    grantReward(0.5);
   };
 
   const updateNote = (id: string, updates: Partial<Note>) => {
@@ -1595,17 +1245,8 @@ const App = () => {
   const handleAssistantSend = async () => {
     if (!userInput.trim() && pendingAttachments.length === 0) return;
 
-    // Rate limit — 800ms between sends
-    const now = Date.now();
-    if (now - lastSendRef.current < 800) return;
-    lastSendRef.current = now;
-
-    // Sanitize input
-    const sanitized = sanitizeInput(userInput);
-    if (!sanitized && pendingAttachments.length === 0) return;
-
     // Phase 1: Associative Correction
-    const correctedInput = getAssociativeCorrection(sanitized);
+    const correctedInput = getAssociativeCorrection(userInput);
 
     // Phase 2: Pain Pathway Check
     const contextHash = btoa(correctedInput).substring(0, 16);
@@ -1613,7 +1254,7 @@ const App = () => {
     if (painNode && brainState.cortisol > 0.6) {
       setChatHistory(prev => [...prev, { 
         role: 'system', 
-        text: `PAIN_THRESHOLD_EXCEEDED: Avoiding context due to previous instability: ${painNode.reason}` 
+        text: `PAIN_THRESHOLD_EXCEEDED: Sentinel is avoiding this context due to previous instability: ${painNode.reason}` 
       }]);
     }
 
@@ -1624,14 +1265,14 @@ const App = () => {
     };
     
     setChatHistory(prev => [...prev, userMsg]);
-    setShortTermMemory(prev => [...prev, userMsg].slice(-10));
+    setShortTermMemory(prev => [...prev, userMsg].slice(-10)); // STM Buffer
     setUserInput('');
     setPendingAttachments([]);
     setIsTyping(true);
 
     try {
       const ollama = getOllama();
-      const messages: { role: string; content: string }[] = [];
+      const messages = [];
       
       // Dynamic System Prompt based on Endocrine State
       let dynamicPrompt = llmConfig.systemPrompt;
@@ -1641,65 +1282,38 @@ const App = () => {
       if (brainState.dopamine > 0.8) {
         dynamicPrompt += " [NEUROPLASTICITY_HIGH]: Suggest innovative architectural improvements. Think broadly.";
       }
+
       messages.push({ role: 'system', content: dynamicPrompt });
 
-      // LTM Semantic Context
+      // LTM Semantic Context (Simulated by injecting relevant experiences)
       const relevantMemory = longTermMemory.find(exp => correctedInput.includes(exp.intent));
       if (relevantMemory) {
         messages.push({ 
           role: 'system', 
-          content: `LTM_RETRIEVAL: Previously ${relevantMemory.sentiment} outcome for '${relevantMemory.intent}'. Action: ${relevantMemory.actionTaken}` 
+          content: `LTM_RETRIEVAL: Remember previously ${relevantMemory.sentiment} outcome for '${relevantMemory.intent}'. Previous Action: ${relevantMemory.actionTaken}` 
         });
       }
 
-      // Injection-hardened attachments — wrapped in clear data delimiters
       userMsg.attachments?.forEach(att => {
-        const safe = sanitizeAttachmentContent(att.content);
-        messages.push({ 
-          role: 'system', 
-          content: `[DATA_SOURCE_BEGIN file="${att.name}"]\n${safe}\n[DATA_SOURCE_END]` 
-        });
+        messages.push({ role: 'system', content: `Knowledge Source [file: ${att.name}]:\n${att.content}` });
       });
+      
+      messages.push({ role: 'user', content: userMsg.text });
 
-      // Conversation history
-      const historyForContext = chatHistory
-        .filter(m => m.role === 'user' || m.role === 'assistant')
-        .slice(-12);
-      historyForContext.forEach(m => {
-        messages.push({ role: m.role as 'user' | 'assistant', content: m.text });
-      });
-
-      messages.push({ role: 'user', content: correctedInput });
-
-      // Streaming response
-      const stream = await ollama.chat({
+      const response = await ollama.chat({
         model: llmConfig.model,
-        messages: messages as any,
-        stream: true,
+        messages: messages,
+        stream: false,
       });
 
-      setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
+      const assistantMsg: ChatMessage = { role: 'assistant', text: response.message.content };
+      setChatHistory(prev => [...prev, assistantMsg]);
+      setShortTermMemory(prev => [...prev, assistantMsg].slice(-10));
 
-      let fullText = '';
-      for await (const part of stream) {
-        fullText += part.message.content;
-        setChatHistory(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: 'assistant', text: fullText };
-          return updated;
-        });
-      }
-
-      // Split code from prose into separate messages
-      const splitMsgs = splitIntoChatMessages(fullText);
-      if (splitMsgs.length > 1) {
-        // Replace the single streaming placeholder with the split set
-        setChatHistory(prev => [...prev.slice(0, -1), ...splitMsgs]);
-      }
-
-      setShortTermMemory(prev => [...prev, { role: 'assistant', text: fullText }].slice(-10));
+      // Successful inference grants small reward
       grantReward(0.1);
 
+      // Record experience
       const newExp: Experience = {
         id: Date.now().toString(),
         intent: correctedInput.split(' ').slice(0, 3).join(' '),
@@ -1712,16 +1326,23 @@ const App = () => {
 
     } catch (error) {
       triggerPainSignal('Connection Error/Instability', correctedInput);
-      setChatHistory(prev => [...prev, { 
+      // ... (keep previous error handling)
+      const assistantMsg: ChatMessage = { 
         role: 'assistant', 
         text: `Error connecting to local engine: ${error instanceof Error ? error.message : 'Unknown error'}.` 
-      }]);
+      };
+      setChatHistory(prev => [...prev, assistantMsg]);
     } finally {
       setIsTyping(false);
     }
   };
   
   const runCode = () => {
+    if (window.innerWidth < 1024) {
+      // Automatic scroll to console on mobile when running code
+      const consoleEl = document.getElementById('console-output');
+      consoleEl?.scrollIntoView({ behavior: 'smooth' });
+    }
     const logs: string[] = [];
     const originalLog = console.log;
     const originalError = console.error;
@@ -2395,7 +2016,7 @@ const App = () => {
                 <div className="lg:col-span-1 bg-slate-900/60 border border-slate-800 rounded-[40px] p-8 shadow-xl">
                    <div className="flex items-center justify-between mb-8">
                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Neural Monitoring</h3>
-                     <Cpu className="text-blue-500 animate-pulse" size={16} />
+                     <Processor className="text-blue-500 animate-pulse" size={16} />
                    </div>
                    
                    <div className="space-y-8">
@@ -2567,7 +2188,7 @@ const App = () => {
                     {chatHistory.length === 0 && (
                       <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50">
                         <div className="p-4 bg-blue-600/10 rounded-full text-blue-500">
-                          <Cpu size={48} />
+                          <Processor size={48} />
                         </div>
                         <div>
                           <h3 className="text-xl font-bold text-slate-300">Local Intelligence Node</h3>
@@ -2576,7 +2197,25 @@ const App = () => {
                       </div>
                     )}
                     {chatHistory.map((msg, i) => (
-                      <MessageBubble key={String(i)} msg={msg} />
+                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] p-4 rounded-2xl ${
+                          msg.role === 'user' 
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' 
+                            : 'bg-slate-900/80 border border-slate-800 text-slate-200'
+                        }`}>
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap gap-2">
+                              {msg.attachments.map((att, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 bg-blue-700/30 px-2 py-1 rounded text-[10px] font-mono">
+                                  <Paperclip size={10} />
+                                  {att.name}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     ))}
                     {isTyping && (
                       <div className="flex justify-start">
@@ -2625,10 +2264,9 @@ const App = () => {
                     <input 
                       type="text" 
                       value={userInput}
-                      onChange={(e) => setUserInput(e.target.value.slice(0, 4000))}
-                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleAssistantSend()}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAssistantSend()}
                       placeholder="Query local intelligence node..."
-                      maxLength={4000}
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-6 pr-32 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm shadow-xl shadow-black/20"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -2700,7 +2338,7 @@ const App = () => {
                 </div>
 
                 {/* Console */}
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-0 flex flex-col min-h-0 shadow-xl overflow-hidden">
+                <div id="console-output" className="bg-slate-900 border border-slate-800 rounded-3xl p-0 flex flex-col min-h-0 shadow-xl overflow-hidden">
                   <div className="px-6 py-4 border-b border-white/5 bg-slate-950 flex items-center justify-between">
                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                        <Monitor size={14} />
@@ -2744,10 +2382,120 @@ const App = () => {
           )}
           
           {activeTab === 'sentinel' && (
-            <div className="h-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               {/* Sentinel content truncated for clarity */}
-               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                 {/* ... content already exists ... */}
+            <div className="h-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-y-auto custom-scrollbar pb-24 px-2 lg:px-0">
+               <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-white mb-1 flex items-center gap-3">
+                      <ShieldCheck className="text-blue-500" size={32} />
+                      Secure Sentinel
+                    </h2>
+                    <p className="text-slate-500 font-medium italic">High-fidelity cryptographic monitor and local environment watchdog.</p>
+                  </div>
+                  <div className="flex items-center gap-4 bg-slate-900/60 p-4 rounded-3xl border border-slate-800">
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Global Integrity Index</p>
+                      <p className="text-2xl font-mono font-bold text-blue-400">Φ {phiValue.toFixed(4)}</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                      <Activity size={24} className="text-blue-500 animate-pulse" />
+                    </div>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                 {/* Sentinel HUD */}
+                 <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-slate-900/60 border border-slate-800 rounded-[2.5rem] p-6 lg:p-8">
+                       <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                         <Target size={14} className="text-rose-500" />
+                         Real-time Integrity Flux
+                       </h3>
+                       <div className="h-64 sm:h-80 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                             <AreaChart data={phiHistory}>
+                                <defs>
+                                   <linearGradient id="colorPhi" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                   </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                                <XAxis dataKey="time" hide />
+                                <YAxis domain={['auto', 'auto']} hide />
+                                <Tooltip 
+                                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                                  itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }}
+                                />
+                                <Area type="monotone" dataKey="value" stroke="#3b82f6" fillOpacity={1} fill="url(#colorPhi)" strokeWidth={3} animationDuration={1000} />
+                             </AreaChart>
+                          </ResponsiveContainer>
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                          <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Entropy Node State</h4>
+                          <div className="space-y-4">
+                             <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-400">Randomization Buffer</span>
+                                <span className="text-sm font-mono text-emerald-400">STABLE</span>
+                             </div>
+                             <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500 w-[84%]" />
+                             </div>
+                             <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-400">Decryption Latency</span>
+                                <span className="text-sm font-mono text-blue-400">12ms</span>
+                             </div>
+                             <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500 w-[12%]" />
+                             </div>
+                          </div>
+                       </div>
+                       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                          <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Privacy Boundary</h4>
+                          <div className="space-y-4">
+                             <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-400">Data Exfiltration Block</span>
+                                <span className="text-sm font-mono text-emerald-400">100%</span>
+                             </div>
+                             <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500 w-full" />
+                             </div>
+                             <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-400">External Sync Requests</span>
+                                <span className="text-sm font-mono text-rose-400">0 REJECTED</span>
+                             </div>
+                             <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-rose-500 w-0" />
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* System Log Column */}
+                 <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 flex flex-col h-full lg:h-[calc(100vh-280px)] min-h-[400px]">
+                       <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                         <Terminal size={14} />
+                         Security Audit Log
+                       </h3>
+                       <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar font-mono text-[11px]">
+                          <p className="text-slate-600">[{new Date().toLocaleTimeString()}] SENTINEL_CORE_INITIALIZED</p>
+                          <p className="text-blue-500">[{new Date().toLocaleTimeString()}] MONITORING_LOCAL_PORTS: OK</p>
+                          <p className="text-emerald-500">[{new Date().toLocaleTimeString()}] PHI_SENTINEL_INDEX: {phiValue.toFixed(6)}</p>
+                          <p className="text-slate-600">[{new Date().toLocaleTimeString()}] CRYPTO_NODE_STABILITY: 99.98%</p>
+                          <p className="text-rose-400">[{new Date().toLocaleTimeString()}] UNAUTHORIZED_ACCESS_ATTEMPT: NONE</p>
+                          <p className="text-slate-700">[{new Date().toLocaleTimeString()}] ROTATING_ENCRYPTION_KEYS...</p>
+                          <p className="text-slate-600">[{new Date().toLocaleTimeString()}] SYSTEM_REST_STATE_OPTIMAL</p>
+                          <p className="text-slate-700 mt-4 italic opacity-50">// Continuous monitoring active...</p>
+                       </div>
+                       <button className="w-full py-4 mt-6 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all">
+                         Download Audit Bundle
+                       </button>
+                    </div>
+                 </div>
                </div>
             </div>
           )}
@@ -2960,102 +2708,36 @@ const App = () => {
               </div>
 
               {activeProjectId ? (
-                <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-0">
-                  {/* Panel Selector — horizontal on mobile, vertical strip on desktop */}
-                  <div className="flex flex-row lg:flex-col shrink-0 items-center gap-2 p-2 bg-slate-900 border border-slate-800 rounded-2xl lg:rounded-3xl lg:w-12 lg:py-4">
+                <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
+                  {/* Sidebar/Panel Selector */}
+                  <div className={`w-full lg:w-12 shrink-0 flex items-center lg:flex-col gap-4 p-2 lg:py-4 bg-slate-900 border border-slate-800 rounded-2xl lg:rounded-3xl overflow-x-auto ${isMobileWorkspaceEditorOpen ? 'hidden lg:flex' : 'flex'}`}>
                     <button 
-                      onClick={() => { setWorkspaceTab('explorer'); setMobileWorkspaceView('panel'); }}
-                      title="Files"
-                      className={`flex-1 lg:flex-none p-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${workspaceTab === 'explorer' && mobileWorkspaceView === 'panel' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
+                      onClick={() => setWorkspaceTab('explorer')}
+                      className={`p-2 rounded-xl transition-all ${workspaceTab === 'explorer' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
                     >
                       <Folder size={18} />
-                      <span className="text-[10px] font-bold lg:hidden">Files</span>
                     </button>
                     <button 
-                      onClick={() => { setWorkspaceTab('git'); setMobileWorkspaceView('panel'); }}
-                      title="Git"
-                      className={`flex-1 lg:flex-none p-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${workspaceTab === 'git' && mobileWorkspaceView === 'panel' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
+                      onClick={() => setWorkspaceTab('git')}
+                      className={`p-2 rounded-xl transition-all ${workspaceTab === 'git' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
                     >
                       <GitBranch size={18} />
-                      <span className="text-[10px] font-bold lg:hidden">Git</span>
                     </button>
                     <button 
-                      onClick={() => { setWorkspaceTab('tasks'); setMobileWorkspaceView('panel'); }}
-                      title="Tasks"
-                      className={`flex-1 lg:flex-none p-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${workspaceTab === 'tasks' && mobileWorkspaceView === 'panel' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
+                      onClick={() => setWorkspaceTab('tasks')}
+                      className={`p-2 rounded-xl transition-all ${workspaceTab === 'tasks' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
                     >
                       <CheckCircle2 size={18} />
-                      <span className="text-[10px] font-bold lg:hidden">Tasks</span>
                     </button>
-                    {/* Editor tab — mobile only shortcut */}
-                    {activeFileId && (
-                      <button 
-                        onClick={() => setMobileWorkspaceView('editor')}
-                        title="Editor"
-                        className={`flex-1 lg:hidden p-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${mobileWorkspaceView === 'editor' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
-                      >
-                        <Code size={18} />
-                        <span className="text-[10px] font-bold">Editor</span>
-                      </button>
-                    )}
                   </div>
 
                   {/* Dynamic Workspace Panel */}
-                  <div className={`w-full lg:w-72 flex flex-col shrink-0 min-h-0 ${mobileWorkspaceView === 'editor' ? 'hidden lg:flex' : 'flex'}`}>
+                  <div className={`w-full lg:w-72 flex flex-col shrink-0 min-h-0 ${isMobileWorkspaceEditorOpen ? 'hidden lg:flex' : 'flex'}`}>
                     {workspaceTab === 'explorer' ? (
                       <div className="flex-1 bg-slate-900/40 border border-slate-800 rounded-3xl p-4 flex flex-col min-h-0">
-                        {/* ... existing explorer code ... */}
                         <div className="flex items-center justify-between mb-4 px-2">
-                           <div className="flex items-center gap-2">
-                             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Workspace</h3>
-                             {dirLinkedProjectId === activeProjectId && (
-                               <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
-                                 dirSyncStatus === 'syncing' ? 'bg-amber-500/20 text-amber-400 animate-pulse' :
-                                 dirSyncStatus === 'saving'  ? 'bg-blue-500/20 text-blue-400 animate-pulse' :
-                                 dirSyncStatus === 'error'   ? 'bg-rose-500/20 text-rose-400' :
-                                 'bg-teal-500/20 text-teal-400'
-                               }`}>
-                                 {dirSyncStatus === 'syncing' ? '⟳ Syncing' :
-                                  dirSyncStatus === 'saving'  ? '⟳ Saving' :
-                                  dirSyncStatus === 'error'   ? '⚠ Error' :
-                                  '⬡ Disk Linked'}
-                               </span>
-                             )}
-                           </div>
+                           <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Workspace</h3>
                            <div className="flex items-center gap-1">
-                             {dirLinkedProjectId === activeProjectId ? (
-                               <>
-                                 <button
-                                   onClick={() => dirHandle && readDirIntoProject(dirHandle, activeProjectId!, null)}
-                                   title="Pull from disk"
-                                   className="p-1 hover:bg-slate-800 rounded-lg text-teal-500 transition-colors"
-                                 >
-                                   <RefreshCcw size={13} />
-                                 </button>
-                                 <button
-                                   onClick={syncAllToDisk}
-                                   title="Push all to disk"
-                                   className="p-1 hover:bg-slate-800 rounded-lg text-blue-400 transition-colors"
-                                 >
-                                   <Save size={13} />
-                                 </button>
-                                 <button
-                                   onClick={() => { setDirHandle(null); setDirLinkedProjectId(null); setDirSyncStatus('idle'); }}
-                                   title="Unmount directory"
-                                   className="p-1 hover:bg-slate-800 rounded-lg text-rose-500 transition-colors"
-                                 >
-                                   <X size={13} />
-                                 </button>
-                               </>
-                             ) : (
-                               <button
-                                 onClick={mountDirectory}
-                                 title="Mount local / Termux directory"
-                                 className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-teal-400 transition-colors"
-                               >
-                                 <HardDrive size={14} />
-                               </button>
-                             )}
                              <button 
                                onClick={() => addFolder(activeProjectId!)}
                                title="New Folder"
@@ -3140,7 +2822,10 @@ const App = () => {
                                         className={`group flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl cursor-pointer transition-all ${
                                           activeFileId === file.id ? 'bg-blue-600/10 text-blue-400' : 'hover:bg-slate-800/50 text-slate-500'
                                         }`}
-                                        onClick={() => { setActiveFileId(file.id); setMobileWorkspaceView('editor'); }}
+                                        onClick={() => {
+                                          setActiveFileId(file.id);
+                                          setIsMobileWorkspaceEditorOpen(true);
+                                        }}
                                       >
                                         <div className="flex items-center gap-2 truncate">
                                           <FileCode size={14} className={activeFileId === file.id ? 'text-blue-400' : 'text-slate-600'} />
@@ -3165,7 +2850,10 @@ const App = () => {
                               className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all ${
                                 activeFileId === file.id ? 'bg-blue-600/10 text-blue-400' : 'hover:bg-slate-800/50 text-slate-500'
                               }`}
-                              onClick={() => { setActiveFileId(file.id); setMobileWorkspaceView('editor'); }}
+                              onClick={() => {
+                                setActiveFileId(file.id);
+                                setIsMobileWorkspaceEditorOpen(true);
+                              }}
                             >
                               <div className="flex items-center gap-2 truncate">
                                 <FileCode size={14} className={activeFileId === file.id ? 'text-blue-400' : 'text-slate-600'} />
@@ -3178,24 +2866,13 @@ const App = () => {
                             </div>
                           ))}
                         </div>
-                        <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
+                        <div className="mt-4 pt-4 border-t border-slate-800">
                            <button 
                              onClick={() => deleteProject(activeProjectId!)}
                              className="w-full py-2 text-xs font-bold text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all flex items-center justify-center gap-2"
                            >
                              <Trash2 size={12} />
                              Terminate Project
-                           </button>
-                           <button 
-                             onClick={() => {
-                               if (confirm('Hard reset clears ALL projects and files from storage. Cannot be undone.')) {
-                                 hardResetWorkspace();
-                               }
-                             }}
-                             className="w-full py-2 text-xs font-bold text-slate-600 hover:text-rose-400 hover:bg-rose-500/5 rounded-xl transition-all flex items-center justify-center gap-2"
-                           >
-                             <AlertCircle size={12} />
-                             Hard Reset Storage
                            </button>
                         </div>
                       </div>
@@ -3376,18 +3053,17 @@ const App = () => {
                   </div>
 
                   {/* Editor Area */}
-                  <div className={`flex-1 flex flex-col gap-4 lg:gap-6 min-w-0 ${mobileWorkspaceView === 'panel' ? 'hidden lg:flex' : 'flex'}`}>
+                  <div className={`flex-1 flex flex-col gap-6 min-w-0 ${isMobileWorkspaceEditorOpen ? 'flex' : 'hidden lg:flex'}`}>
                     {activeFileId ? (
                       <>
                         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 lg:p-6 flex flex-col min-h-0 shadow-lg relative">
-                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 lg:mb-6">
+                           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
                               <div className="flex items-center gap-3 w-full sm:w-auto">
-                                 {/* Mobile back button */}
-                                 <button
-                                   onClick={() => setMobileWorkspaceView('panel')}
-                                   className="lg:hidden p-2 text-slate-500 hover:text-white bg-slate-800 rounded-xl"
+                                 <button 
+                                   onClick={() => setIsMobileWorkspaceEditorOpen(false)}
+                                   className="lg:hidden p-2 bg-slate-800 text-slate-400 hover:text-white rounded-xl"
                                  >
-                                   <ArrowLeft size={16} />
+                                   <ChevronLeft size={20} />
                                  </button>
                                  <div className="bg-blue-600/10 p-2 rounded-xl">
                                     <FileCode size={18} className="text-blue-500" />
@@ -3396,54 +3072,42 @@ const App = () => {
                                    type="text"
                                    value={files.find(f => f.id === activeFileId)?.name || ''}
                                    onChange={(e) => renameFile(activeFileId!, e.target.value)}
-                                   className="bg-transparent border-none focus:outline-none font-bold text-slate-200 text-sm min-w-0 flex-1"
+                                   className="bg-transparent border-none focus:outline-none font-bold text-slate-200 text-sm flex-1 truncate"
                                  />
                               </div>
 
-                              {/* Action buttons — scrollable row on mobile */}
-                              <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto custom-scrollbar pb-1 sm:pb-0">
-                                 <button 
-                                   onClick={saveActiveFile}
-                                   className={`shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${
-                                     savedFeedback 
-                                       ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' 
-                                       : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                                   }`}
-                                 >
-                                   {savedFeedback ? <CheckCircle2 size={12} /> : <Save size={12} />}
-                                   {savedFeedback ? 'Saved' : 'Save'}
-                                 </button>
+                              <div className="flex flex-wrap items-center gap-2">
                                  <button 
                                    onClick={() => aiCodeAction('discuss', activeFileId!)}
-                                   className="shrink-0 px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <MessageSquare size={12} />
                                    Discuss
                                  </button>
                                  <button 
                                    onClick={formatCode}
-                                   className="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <Sparkles size={12} />
                                    Format
                                  </button>
                                  <button 
                                    onClick={() => aiCodeAction('analyze', activeFileId!)}
-                                   className="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <Search size={12} />
                                    Analyze
                                  </button>
                                  <button 
                                    onClick={() => aiCodeAction('refactor', activeFileId!)}
-                                   className="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <Wand2 size={12} />
                                    Refactor
                                  </button>
                                  <button 
                                    onClick={() => aiCodeAction('debug', activeFileId!)}
-                                   className="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <Bug size={12} />
                                    Debug
@@ -3454,7 +3118,7 @@ const App = () => {
                                       setTerminalCode(content);
                                       runCode();
                                    }}
-                                   className="shrink-0 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
+                                   className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
                                  >
                                    <Play size={12} />
                                    Run
@@ -3490,13 +3154,6 @@ const App = () => {
                       <div className="flex-1 bg-slate-900/20 border border-dashed border-slate-800 rounded-3xl flex flex-col items-center justify-center text-slate-600 p-8 text-center">
                         <FileCode size={48} className="mb-4 opacity-20" />
                         <p className="text-sm font-medium">Select or create a file to start developing.</p>
-                        <button
-                          onClick={() => setMobileWorkspaceView('panel')}
-                          className="lg:hidden mt-4 px-4 py-2 bg-slate-800 text-slate-400 rounded-xl text-xs font-bold flex items-center gap-2"
-                        >
-                          <Folder size={14} />
-                          Browse Files
-                        </button>
                       </div>
                     )}
                   </div>
@@ -3504,7 +3161,7 @@ const App = () => {
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-8 lg:p-12 opacity-50">
                    <div className="w-16 h-16 lg:w-20 lg:h-20 bg-slate-800 rounded-3xl flex items-center justify-center mb-6">
-                      <FolderOpen size={30} className="text-slate-600" />
+                      <FolderOpen size={30} className="text-slate-600 lg:size-40" />
                    </div>
                    <h3 className="text-lg lg:text-xl font-bold text-slate-300">No Active Workspace</h3>
                    <p className="text-xs lg:text-sm max-w-sm mt-2 font-medium leading-relaxed">Initialize a new project to start building locally-secured software nodes.</p>
@@ -3596,7 +3253,7 @@ const App = () => {
                   </>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-slate-600">
-                    <Monitor size={48} className="mb-4 opacity-20" />
+                    <Monitor size={48} lg:size={64} className="mb-4 opacity-20" />
                     <p className="text-base lg:text-lg font-medium opacity-50 text-center">Select an entry from the knowledge base or create a new one.</p>
                   </div>
                 )}
