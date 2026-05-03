@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext, memo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import JSZip from 'jszip';
@@ -219,7 +219,7 @@ const POPULAR_MODELS = [
 
 // --- Components ---
 
-const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick: () => void }) => (
+const SidebarItem = memo(({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick: () => void }) => (
   <button
     onClick={onClick}
     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
@@ -231,9 +231,9 @@ const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label:
     <Icon size={20} />
     <span className="font-medium">{label}</span>
   </button>
-);
+));
 
-const StatCard = ({ icon: Icon, label, value, status }: { icon: any, label: string, value: string, status: string }) => (
+const StatCard = memo(({ icon: Icon, label, value, status }: { icon: any, label: string, value: string, status: string }) => (
   <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-2xl flex items-center gap-4 hover:border-slate-700 transition-colors">
     <div className="p-3 bg-slate-800 rounded-lg text-blue-400">
       <Icon size={24} />
@@ -250,7 +250,7 @@ const StatCard = ({ icon: Icon, label, value, status }: { icon: any, label: stri
       </div>
     </div>
   </div>
-);
+));
 
 // --- Chat Hardening Utilities ---
 
@@ -314,7 +314,7 @@ const splitIntoChatMessages = (fullText: string): ChatMessage[] => {
 };
 
 // --- MessageBubble Component ---
-const MessageBubble = ({ msg }: { msg: ChatMessage; key?: React.Key }) => {
+const MessageBubble = memo(({ msg }: { msg: ChatMessage; key?: React.Key }) => {
   const [copied, setCopied] = React.useState(false);
 
   const copyFull = () => {
@@ -387,10 +387,10 @@ const MessageBubble = ({ msg }: { msg: ChatMessage; key?: React.Key }) => {
       </div>
     </div>
   );
-};
+});
 
 /** Inline code block with its own copy button */
-const CodeBlock = ({ lang, code }: { lang: string; code: string }) => {
+const CodeBlock = memo(({ lang, code }: { lang: string; code: string }) => {
   const [copied, setCopied] = React.useState(false);
   const copy = () => {
     navigator.clipboard.writeText(code).then(() => {
@@ -415,7 +415,39 @@ const CodeBlock = ({ lang, code }: { lang: string; code: string }) => {
       <pre className="px-4 py-3 font-mono text-xs text-blue-200/80 leading-relaxed overflow-x-auto custom-scrollbar whitespace-pre">{code}</pre>
     </div>
   );
-};
+});
+
+// ─── Domain Contexts ────────────────────────────────────────────────────────
+
+interface WorkspaceCtx {
+  projects: Project[]; files: VFile[]; folders: VFolder[];
+  activeProjectId: string | null; activeFileId: string | null;
+  setActiveProjectId: (id: string | null) => void;
+  setActiveFileId: (id: string | null) => void;
+  setFiles: React.Dispatch<React.SetStateAction<VFile[]>>;
+  setFolders: React.Dispatch<React.SetStateAction<VFolder[]>>;
+}
+const WorkspaceContext = createContext<WorkspaceCtx | null>(null);
+export const useWorkspace = () => useContext(WorkspaceContext)!;
+
+interface ChatCtx {
+  chatHistory: ChatMessage[]; sessions: ChatSession[];
+  isTyping: boolean; userInput: string;
+  setChatHistory: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  setUserInput: React.Dispatch<React.SetStateAction<string>>;
+}
+const ChatContext = createContext<ChatCtx | null>(null);
+export const useChat = () => useContext(ChatContext)!;
+
+interface UICtx {
+  activeTab: string; isSidebarOpen: boolean;
+  setActiveTab: (tab: any) => void;
+  setIsSidebarOpen: (open: boolean) => void;
+}
+const UIContext = createContext<UICtx | null>(null);
+export const useUI = () => useContext(UIContext)!;
+
+// ────────────────────────────────────────────────────────────────────────────
 
 const App = () => {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -432,6 +464,7 @@ const App = () => {
   const [workspaceTab, setWorkspaceTab] = useState<'explorer' | 'git' | 'tasks'>('explorer');
   const [mobileWorkspaceView, setMobileWorkspaceView] = useState<'panel' | 'editor'>('panel');
   const [savedFeedback, setSavedFeedback] = useState(false);
+  const [commitMessage, setCommitMessage] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [targetUploadFolderId, setTargetUploadFolderId] = useState<string | null>(null);
@@ -531,6 +564,8 @@ const App = () => {
   const lastOllamaRef = useRef<Ollama | null>(null);
   const lastSendRef = useRef<number>(0);
   const recognitionRef = useRef<any>(null);
+  const dirtyFileIds = useRef<Set<string>>(new Set());
+  const connectionRetryCount = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const assistantFileInputRef = useRef<HTMLInputElement>(null);
   const workspaceFileInputRef = useRef<HTMLInputElement>(null);
@@ -561,7 +596,7 @@ const App = () => {
     }
   }, []);
 
-  const toggleListening = () => {
+  const toggleListening = useCallback(() => {
     if (isListening) {
       recognitionRef.current?.stop();
     } else {
@@ -572,12 +607,11 @@ const App = () => {
         alert('Speech recognition is not supported in this browser.');
       }
     }
-  };
+  }, [isListening]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
     Array.from(files).forEach((file: File) => {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -592,15 +626,12 @@ const App = () => {
       };
       reader.readAsText(file);
     });
-    
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  }, []);
 
-  const handleAssistantFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAssistantFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
     Array.from(files).forEach((file: File) => {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -609,9 +640,8 @@ const App = () => {
       };
       reader.readAsText(file);
     });
-    
     if (assistantFileInputRef.current) assistantFileInputRef.current.value = '';
-  };
+  }, []);
 
   const handleGithubImport = async () => {
     const { owner, repo, path, branch } = githubConfig;
@@ -667,7 +697,7 @@ const App = () => {
   };
 
   // Check connection and fetch models
-  const checkConnection = async () => {
+  const checkConnection = useCallback(async () => {
     setConnectionStatus('checking');
     try {
       const ollama = getOllama();
@@ -675,17 +705,22 @@ const App = () => {
       const availableModels = response.models.map(m => m.name);
       setModels(availableModels);
       if (availableModels.length > 0 && !availableModels.includes(llmConfig.model)) {
-        // Only auto-switch if the current model doesn't exist and we have alternatives
         if (llmConfig.model === 'llama3' && !availableModels.includes('llama3')) {
            setLlmConfig(prev => ({ ...prev, model: availableModels[0] }));
         }
       }
       setConnectionStatus('connected');
+      connectionRetryCount.current = 0; // reset on success
     } catch (error) {
       console.error('LLM Connection failed:', error);
       setConnectionStatus('disconnected');
+      // Exponential back-off: 10s, 20s, 40s … capped at 5min
+      const retries = connectionRetryCount.current;
+      const delay = Math.min(10_000 * Math.pow(2, retries), 300_000);
+      connectionRetryCount.current = retries + 1;
+      setTimeout(() => checkConnection(), delay);
     }
-  };
+  }, [llmConfig.endpoint, llmConfig.model]);
 
   const pullModel = async (modelName: string) => {
     setPullingModel(modelName);
@@ -1032,6 +1067,7 @@ const App = () => {
   };
 
   const updateFileContent = (id: string, content: string) => {
+    dirtyFileIds.current.add(id);
     setFiles(prev => prev.map(f => f.id === id ? { ...f, content, updatedAt: Date.now() } : f));
   };
 
@@ -1044,16 +1080,15 @@ const App = () => {
     if (activeFileId === id) setActiveFileId(null);
   };
 
-  const saveActiveFile = async () => {
+  const saveActiveFile = useCallback(async () => {
     if (!activeFileId) return;
-    // localStorage is already kept in sync via useEffect — explicitly flush to disk if mounted
     if (dirHandle && dirLinkedProjectId) {
       const file = files.find(f => f.id === activeFileId);
       if (file) await saveFileToDisk(file);
     }
     setSavedFeedback(true);
     setTimeout(() => setSavedFeedback(false), 1800);
-  };
+  }, [activeFileId, dirHandle, dirLinkedProjectId, files]);
 
   const formatCode = async () => {
     if (!activeFileId) return;
@@ -1321,14 +1356,15 @@ const App = () => {
     setDirSyncStatus('idle');
   };
 
-  // Auto-save linked files to disk (debounced 1.5s)
+  // Auto-save: only flush dirty files to disk (debounced 1.5s)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!dirHandle || !dirLinkedProjectId) return;
+    if (!dirHandle || !dirLinkedProjectId || dirtyFileIds.current.size === 0) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
-      const changed = files.filter(f => f.projectId === dirLinkedProjectId);
-      changed.forEach(saveFileToDisk);
+      const dirty = files.filter(f => dirtyFileIds.current.has(f.id) && f.projectId === dirLinkedProjectId);
+      dirty.forEach(f => saveFileToDisk(f));
+      dirtyFileIds.current.clear();
     }, 1500);
     return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
   }, [files]);
@@ -1390,6 +1426,12 @@ const App = () => {
     };
   };
 
+  // O(1) staged-file membership check for render loop
+  const stagedFileSet = useMemo(
+    () => new Set(getGitState(activeProjectId || '').stagedFiles),
+    [gitStates, activeProjectId]
+  );
+
   const initGitRepo = (projectId: string) => {
     setGitStates(prev => [
       ...prev.filter(gs => gs.projectId !== projectId),
@@ -1403,7 +1445,7 @@ const App = () => {
         const staged = new Set(gs.stagedFiles);
         if (staged.has(fileId)) staged.delete(fileId);
         else staged.add(fileId);
-        return { ...gs, stagedFiles: Array.from(staged) };
+        return { ...gs, stagedFiles: Array.from(staged) }; // Array for JSON serialisation
       }
       return gs;
     }));
@@ -1411,10 +1453,11 @@ const App = () => {
 
   const commitChanges = (projectId: string, message: string) => {
     const state = getGitState(projectId);
-    if (!state.isInitialized || state.stagedFiles.length === 0) return;
+    const staged = new Set(state.stagedFiles);
+    if (!state.isInitialized || staged.size === 0) return;
 
     const snapshot = files
-      .filter(f => state.stagedFiles.includes(f.id))
+      .filter(f => staged.has(f.id))   // O(1) per file
       .map(f => ({ id: f.id, content: f.content }));
 
     const newCommit: GitCommit = {
@@ -1427,16 +1470,12 @@ const App = () => {
 
     setGitStates(prev => prev.map(gs => {
       if (gs.projectId === projectId) {
-        return { 
-          ...gs, 
-          commits: [newCommit, ...gs.commits], 
-          stagedFiles: [] 
-        };
+        return { ...gs, commits: [newCommit, ...gs.commits], stagedFiles: [] };
       }
       return gs;
     }));
 
-    grantReward(0.2); // Success reward
+    grantReward(0.2);
   };
 
   const handlePushRepo = async (projectId: string) => {
@@ -1592,7 +1631,7 @@ const App = () => {
     }
   };
 
-  const handleAssistantSend = async () => {
+  const handleAssistantSend = useCallback(async () => {
     if (!userInput.trim() && pendingAttachments.length === 0) return;
 
     // Rate limit — 800ms between sends
@@ -1719,7 +1758,7 @@ const App = () => {
     } finally {
       setIsTyping(false);
     }
-  };
+  }, [userInput, pendingAttachments, avoidanceMap, brainState, llmConfig, longTermMemory, chatHistory]);
   
   const runCode = () => {
     const logs: string[] = [];
@@ -1753,7 +1792,57 @@ const App = () => {
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
 
+  // O(1) lookup maps — avoids .find() scanning full arrays on every render
+  const notesById = useMemo(
+    () => new Map(notes.map(n => [n.id, n])),
+    [notes]
+  );
+  const filesById = useMemo(
+    () => new Map(files.map(f => [f.id, f])),
+    [files]
+  );
+  const foldersById = useMemo(
+    () => new Map(folders.map(f => [f.id, f])),
+    [folders]
+  );
+
+  // Memoised derived state — avoids recomputing on every render
+  const activeProjectFiles = useMemo(
+    () => files.filter(f => f.projectId === activeProjectId),
+    [files, activeProjectId]
+  );
+
+  const activeProjectFolders = useMemo(
+    () => folders.filter(f => f.projectId === activeProjectId),
+    [folders, activeProjectId]
+  );
+
+  const activeFile = useMemo(
+    () => activeFileId ? filesById.get(activeFileId) ?? null : null,
+    [filesById, activeFileId]
+  );
+
+  const workspaceContextValue = useMemo<WorkspaceCtx>(() => ({
+    projects, files, folders,
+    activeProjectId, activeFileId,
+    setActiveProjectId, setActiveFileId,
+    setFiles, setFolders,
+  }), [projects, files, folders, activeProjectId, activeFileId]);
+
+  const chatContextValue = useMemo<ChatCtx>(() => ({
+    chatHistory, sessions, isTyping, userInput,
+    setChatHistory, setUserInput,
+  }), [chatHistory, sessions, isTyping, userInput]);
+
+  const uiContextValue = useMemo<UICtx>(() => ({
+    activeTab, isSidebarOpen,
+    setActiveTab, setIsSidebarOpen,
+  }), [activeTab, isSidebarOpen]);
+
   return (
+    <WorkspaceContext.Provider value={workspaceContextValue}>
+    <ChatContext.Provider value={chatContextValue}>
+    <UIContext.Provider value={uiContextValue}>
     <div className="flex h-screen bg-[#0b0e14] text-slate-200 font-sans selection:bg-blue-500/30 overflow-hidden">
       {/* Hidden Workspace File Input */}
       <input 
@@ -1813,48 +1902,13 @@ const App = () => {
         </div>
 
         <nav className="flex-1 space-y-2 min-w-[240px]">
-          <SidebarItem 
-            icon={LayoutDashboard} 
-            label="Dashboard" 
-            active={activeTab === 'dashboard'} 
-            onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }} 
-          />
-          <SidebarItem 
-            icon={MessageSquare} 
-            label="Local Assistant" 
-            active={activeTab === 'assistant'} 
-            onClick={() => { setActiveTab('assistant'); setIsSidebarOpen(false); }} 
-          />
-          <SidebarItem 
-            icon={Bot} 
-            label="Autonomous Agents" 
-            active={activeTab === 'agents'} 
-            onClick={() => { setActiveTab('agents'); setIsSidebarOpen(false); }} 
-          />
-          <SidebarItem 
-            icon={FileText} 
-            label="Knowledge Base" 
-            active={activeTab === 'notes'} 
-            onClick={() => { setActiveTab('notes'); setIsSidebarOpen(false); }} 
-          />
-          <SidebarItem 
-            icon={Terminal} 
-            label="Code Sandbox" 
-            active={activeTab === 'terminal'} 
-            onClick={() => { setActiveTab('terminal'); setIsSidebarOpen(false); }} 
-          />
-          <SidebarItem 
-            icon={ShieldCheck} 
-            label="Secure Sentinel" 
-            active={activeTab === 'sentinel'} 
-            onClick={() => { setActiveTab('sentinel'); setIsSidebarOpen(false); }} 
-          />
-          <SidebarItem 
-            icon={FolderOpen} 
-            label="Workspace" 
-            active={activeTab === 'workspace'} 
-            onClick={() => { setActiveTab('workspace'); setIsSidebarOpen(false); }} 
-          />
+          <SidebarItem icon={LayoutDashboard} label="Dashboard"        active={activeTab === 'dashboard'} onClick={useCallback(() => { setActiveTab('dashboard');  setIsSidebarOpen(false); }, [])} />
+          <SidebarItem icon={MessageSquare}  label="Local Assistant"   active={activeTab === 'assistant'} onClick={useCallback(() => { setActiveTab('assistant');  setIsSidebarOpen(false); }, [])} />
+          <SidebarItem icon={Bot}            label="Autonomous Agents" active={activeTab === 'agents'}    onClick={useCallback(() => { setActiveTab('agents');     setIsSidebarOpen(false); }, [])} />
+          <SidebarItem icon={FileText}       label="Knowledge Base"    active={activeTab === 'notes'}     onClick={useCallback(() => { setActiveTab('notes');      setIsSidebarOpen(false); }, [])} />
+          <SidebarItem icon={Terminal}       label="Code Sandbox"      active={activeTab === 'terminal'}  onClick={useCallback(() => { setActiveTab('terminal');   setIsSidebarOpen(false); }, [])} />
+          <SidebarItem icon={ShieldCheck}    label="Secure Sentinel"   active={activeTab === 'sentinel'}  onClick={useCallback(() => { setActiveTab('sentinel');   setIsSidebarOpen(false); }, [])} />
+          <SidebarItem icon={FolderOpen}     label="Workspace"         active={activeTab === 'workspace'} onClick={useCallback(() => { setActiveTab('workspace');  setIsSidebarOpen(false); }, [])} />
         </nav>
 
         <div className="mt-auto space-y-4 pt-6 border-t border-slate-800 min-w-[240px]">
@@ -3223,12 +3277,12 @@ const App = () => {
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-bold text-slate-500 uppercase">Changes</span>
                                 <span className="px-2 py-0.5 bg-slate-800 text-[9px] font-bold text-slate-400 rounded-md">
-                                  {getGitState(activeProjectId!).stagedFiles.length} Staged
+                                  {stagedFileSet.size} Staged
                                 </span>
                               </div>
                               <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
                                 {files.filter(f => f.projectId === activeProjectId).map(file => {
-                                  const isStaged = getGitState(activeProjectId!).stagedFiles.includes(file.id);
+                                  const isStaged = stagedFileSet.has(file.id);
                                   return (
                                     <div key={file.id} className="flex items-center justify-between p-2 hover:bg-slate-800/50 rounded-xl transition-colors group">
                                       <div className="flex items-center gap-2 truncate">
@@ -3250,15 +3304,15 @@ const App = () => {
                             <div className="space-y-3">
                               <textarea 
                                 placeholder="Commit message..."
-                                id="commit-msg"
+                                value={commitMessage}
+                                onChange={e => setCommitMessage(e.target.value)}
                                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 placeholder:text-slate-700 focus:outline-none focus:border-blue-500 min-h-[60px] resize-none"
                               />
                               <button 
                                 onClick={() => {
-                                  const msg = (document.getElementById('commit-msg') as HTMLTextAreaElement).value;
-                                  if (!msg) return;
-                                  commitChanges(activeProjectId!, msg);
-                                  (document.getElementById('commit-msg') as HTMLTextAreaElement).value = '';
+                                  if (!commitMessage.trim()) return;
+                                  commitChanges(activeProjectId!, commitMessage.trim());
+                                  setCommitMessage('');
                                 }}
                                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-bold transition-all"
                               >
@@ -3623,6 +3677,9 @@ const App = () => {
         }
       `}</style>
     </div>
+    </UIContext.Provider>
+    </ChatContext.Provider>
+    </WorkspaceContext.Provider>
   );
 };
 
