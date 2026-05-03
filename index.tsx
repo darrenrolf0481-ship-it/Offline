@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext, memo, useReducer, lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import JSZip from 'jszip';
@@ -219,7 +219,7 @@ const POPULAR_MODELS = [
 
 // --- Components ---
 
-const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick: () => void }) => (
+const SidebarItem = memo(({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick: () => void }) => (
   <button
     onClick={onClick}
     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
@@ -231,9 +231,9 @@ const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label:
     <Icon size={20} />
     <span className="font-medium">{label}</span>
   </button>
-);
+));
 
-const StatCard = ({ icon: Icon, label, value, status }: { icon: any, label: string, value: string, status: string }) => (
+const StatCard = memo(({ icon: Icon, label, value, status }: { icon: any, label: string, value: string, status: string }) => (
   <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-2xl flex items-center gap-4 hover:border-slate-700 transition-colors">
     <div className="p-3 bg-slate-800 rounded-lg text-blue-400">
       <Icon size={24} />
@@ -250,7 +250,7 @@ const StatCard = ({ icon: Icon, label, value, status }: { icon: any, label: stri
       </div>
     </div>
   </div>
-);
+));
 
 // --- Chat Hardening Utilities ---
 
@@ -314,7 +314,7 @@ const splitIntoChatMessages = (fullText: string): ChatMessage[] => {
 };
 
 // --- MessageBubble Component ---
-const MessageBubble = ({ msg }: { msg: ChatMessage; key?: React.Key }) => {
+const MessageBubble = memo(({ msg }: { msg: ChatMessage; key?: React.Key }) => {
   const [copied, setCopied] = React.useState(false);
 
   const copyFull = () => {
@@ -387,10 +387,10 @@ const MessageBubble = ({ msg }: { msg: ChatMessage; key?: React.Key }) => {
       </div>
     </div>
   );
-};
+});
 
 /** Inline code block with its own copy button */
-const CodeBlock = ({ lang, code }: { lang: string; code: string }) => {
+const CodeBlock = memo(({ lang, code }: { lang: string; code: string }) => {
   const [copied, setCopied] = React.useState(false);
   const copy = () => {
     navigator.clipboard.writeText(code).then(() => {
@@ -415,12 +415,185 @@ const CodeBlock = ({ lang, code }: { lang: string; code: string }) => {
       <pre className="px-4 py-3 font-mono text-xs text-blue-200/80 leading-relaxed overflow-x-auto custom-scrollbar whitespace-pre">{code}</pre>
     </div>
   );
+});
+
+// ─── Stable ID Generator (crypto.randomUUID, no extra dep) ──────────────────
+const uid = () => crypto.randomUUID();
+
+// ─── Error Boundary ──────────────────────────────────────────────────────────
+interface EBState { hasError: boolean; error?: Error }
+interface EBProps { children: React.ReactNode; fallback?: React.ReactNode }
+
+class ErrorBoundary extends React.Component<EBProps, EBState> {
+  constructor(props: EBProps) {
+    super(props);
+    (this as any).state = { hasError: false } as EBState;
+  }
+
+  static getDerivedStateFromError(error: Error): EBState {
+    return { hasError: true, error };
+  }
+
+  render() {
+    const s = (this as any).state as EBState;
+    const p = (this as any).props as EBProps;
+    if (s.hasError) {
+      return p.fallback ?? (
+        <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm space-y-2">
+          <p className="font-bold">Something went wrong in this panel.</p>
+          <p className="font-mono text-xs opacity-70">{s.error?.message}</p>
+          <button
+            onClick={() => (this as any).setState({ hasError: false })}
+            className="px-4 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 rounded-xl text-xs font-bold transition-all"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return p.children;
+  }
+}
+
+// ─── Files Reducer (prevents dirty-flag race on setFiles) ────────────────────
+type FileAction =
+  | { type: 'ADD'; file: VFile }
+  | { type: 'UPDATE_CONTENT'; id: string; content: string }
+  | { type: 'RENAME'; id: string; name: string }
+  | { type: 'DELETE'; id: string }
+  | { type: 'BULK_SET'; files: VFile[] }
+  | { type: 'BULK_ADD'; files: VFile[] };
+
+const filesReducer = (state: VFile[], action: FileAction): VFile[] => {
+  switch (action.type) {
+    case 'ADD':
+      return [...state, action.file];
+    case 'UPDATE_CONTENT':
+      return state.map(f => f.id === action.id ? { ...f, content: action.content, updatedAt: Date.now() } : f);
+    case 'RENAME':
+      return state.map(f => f.id === action.id ? { ...f, name: action.name, updatedAt: Date.now() } : f);
+    case 'DELETE':
+      return state.filter(f => f.id !== action.id);
+    case 'BULK_SET':
+      return action.files;
+    case 'BULK_ADD': {
+      const existing = new Set(state.map(f => f.id));
+      return [...state, ...action.files.filter(f => !existing.has(f.id))];
+    }
+    default:
+      return state;
+  }
 };
+
+// ─── useLLM hook — isolates all Ollama logic from the UI ─────────────────────
+interface UseLLMOptions {
+  endpoint: string;
+  model: string;
+  systemPrompt: string;
+}
+
+const useLLM = (opts: UseLLMOptions) => {
+  const ollamaRef = useRef<Ollama | null>(null);
+  const abortRef  = useRef<AbortController | null>(null);
+
+  const getClient = useCallback(() => {
+    if (!ollamaRef.current || ollamaRef.current.config.host !== opts.endpoint) {
+      ollamaRef.current = new Ollama({ host: opts.endpoint });
+    }
+    return ollamaRef.current;
+  }, [opts.endpoint]);
+
+  const abort = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }, []);
+
+  const streamChat = useCallback(async (
+    messages: { role: string; content: string }[],
+    onToken: (token: string) => void,
+    signal?: AbortSignal
+  ): Promise<string> => {
+    const client = getClient();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    // Merge external signal with internal one
+    if (signal) signal.addEventListener('abort', () => ctrl.abort());
+
+    let full = '';
+    const stream = await client.chat({
+      model: opts.model,
+      messages: messages as any,
+      stream: true,
+    });
+
+    for await (const part of stream) {
+      if (ctrl.signal.aborted) break;
+      const token = part.message.content;
+      full += token;
+      onToken(token);
+    }
+    abortRef.current = null;
+    return full;
+  }, [getClient, opts.model]);
+
+  const listModels = useCallback(async (): Promise<string[]> => {
+    const client = getClient();
+    const res = await client.list();
+    return res.models.map(m => m.name);
+  }, [getClient]);
+
+  const pullModel = useCallback(async (
+    modelName: string,
+    onProgress: (p: any) => void
+  ) => {
+    const client = getClient();
+    const stream = await client.pull({ model: modelName, stream: true });
+    for await (const part of stream) onProgress(part);
+  }, [getClient]);
+
+  // Cleanup on unmount
+  useEffect(() => () => abort(), [abort]);
+
+  return { streamChat, listModels, pullModel, abort };
+};
+
+// ─── Domain Contexts ────────────────────────────────────────────────────────
+
+interface WorkspaceCtx {
+  projects: Project[]; files: VFile[]; folders: VFolder[];
+  activeProjectId: string | null; activeFileId: string | null;
+  setActiveProjectId: (id: string | null) => void;
+  setActiveFileId: (id: string | null) => void;
+  dispatchFiles: React.Dispatch<FileAction>;
+  setFolders: React.Dispatch<React.SetStateAction<VFolder[]>>;
+}
+const WorkspaceContext = createContext<WorkspaceCtx | null>(null);
+export const useWorkspace = () => useContext(WorkspaceContext)!;
+
+interface ChatCtx {
+  chatHistory: ChatMessage[]; sessions: ChatSession[];
+  isTyping: boolean; userInput: string;
+  setChatHistory: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  setUserInput: React.Dispatch<React.SetStateAction<string>>;
+}
+const ChatContext = createContext<ChatCtx | null>(null);
+export const useChat = () => useContext(ChatContext)!;
+
+interface UICtx {
+  activeTab: string; isSidebarOpen: boolean;
+  setActiveTab: (tab: any) => void;
+  setIsSidebarOpen: (open: boolean) => void;
+}
+const UIContext = createContext<UICtx | null>(null);
+export const useUI = () => useContext(UIContext)!;
+
+// ────────────────────────────────────────────────────────────────────────────
 
 const App = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [files, setFiles] = useState<VFile[]>([]);
+  const [files, dispatchFiles] = useReducer(filesReducer, []);
   const [folders, setFolders] = useState<VFolder[]>([]);
   const [gitStates, setGitStates] = useState<GitState[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -432,6 +605,7 @@ const App = () => {
   const [workspaceTab, setWorkspaceTab] = useState<'explorer' | 'git' | 'tasks'>('explorer');
   const [mobileWorkspaceView, setMobileWorkspaceView] = useState<'panel' | 'editor'>('panel');
   const [savedFeedback, setSavedFeedback] = useState(false);
+  const [commitMessage, setCommitMessage] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [targetUploadFolderId, setTargetUploadFolderId] = useState<string | null>(null);
@@ -528,9 +702,13 @@ const App = () => {
   const [pullError, setPullError] = useState<string | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const lastOllamaRef = useRef<Ollama | null>(null);
   const lastSendRef = useRef<number>(0);
   const recognitionRef = useRef<any>(null);
+  const dirtyFileIds = useRef<Set<string>>(new Set());
+  const connectionRetryCount = useRef(0);
+  const sendAbortRef = useRef<AbortController | null>(null);
+
+  const llm = useLLM({ endpoint: llmConfig.endpoint, model: llmConfig.model, systemPrompt: llmConfig.systemPrompt });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const assistantFileInputRef = useRef<HTMLInputElement>(null);
   const workspaceFileInputRef = useRef<HTMLInputElement>(null);
@@ -559,9 +737,11 @@ const App = () => {
         setIsListening(false);
       };
     }
+    // Cleanup: stop recognition on unmount
+    return () => { recognitionRef.current?.stop(); };
   }, []);
 
-  const toggleListening = () => {
+  const toggleListening = useCallback(() => {
     if (isListening) {
       recognitionRef.current?.stop();
     } else {
@@ -572,18 +752,17 @@ const App = () => {
         alert('Speech recognition is not supported in this browser.');
       }
     }
-  };
+  }, [isListening]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
     Array.from(files).forEach((file: File) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target?.result as string;
         const newNote: Note = {
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          id: uid(),
           title: file.name,
           content: content || 'Empty file',
           updatedAt: Date.now(),
@@ -592,15 +771,12 @@ const App = () => {
       };
       reader.readAsText(file);
     });
-    
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  }, []);
 
-  const handleAssistantFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAssistantFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
     Array.from(files).forEach((file: File) => {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -609,9 +785,8 @@ const App = () => {
       };
       reader.readAsText(file);
     });
-    
     if (assistantFileInputRef.current) assistantFileInputRef.current.value = '';
-  };
+  }, []);
 
   const handleGithubImport = async () => {
     const { owner, repo, path, branch } = githubConfig;
@@ -640,7 +815,7 @@ const App = () => {
         const content = await fileResponse.text();
         
         const newNote: Note = {
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          id: uid(),
           title: `[GH] ${fileMetadata.name}`,
           content: content,
           updatedAt: Date.now(),
@@ -658,54 +833,41 @@ const App = () => {
     }
   };
 
-  // Get Ollama client
-  const getOllama = () => {
-    if (!lastOllamaRef.current || lastOllamaRef.current.config.host !== llmConfig.endpoint) {
-      lastOllamaRef.current = new Ollama({ host: llmConfig.endpoint });
-    }
-    return lastOllamaRef.current;
-  };
-
   // Check connection and fetch models
-  const checkConnection = async () => {
+  const checkConnection = useCallback(async () => {
     setConnectionStatus('checking');
     try {
-      const ollama = getOllama();
-      const response = await ollama.list();
-      const availableModels = response.models.map(m => m.name);
-      setModels(availableModels);
-      if (availableModels.length > 0 && !availableModels.includes(llmConfig.model)) {
-        // Only auto-switch if the current model doesn't exist and we have alternatives
-        if (llmConfig.model === 'llama3' && !availableModels.includes('llama3')) {
-           setLlmConfig(prev => ({ ...prev, model: availableModels[0] }));
+      const available = await llm.listModels();
+      setModels(available);
+      if (available.length > 0 && !available.includes(llmConfig.model)) {
+        if (llmConfig.model === 'llama3' && !available.includes('llama3')) {
+          setLlmConfig(prev => ({ ...prev, model: available[0] }));
         }
       }
       setConnectionStatus('connected');
+      connectionRetryCount.current = 0;
     } catch (error) {
       console.error('LLM Connection failed:', error);
       setConnectionStatus('disconnected');
+      const delay = Math.min(10_000 * Math.pow(2, connectionRetryCount.current), 300_000);
+      connectionRetryCount.current += 1;
+      setTimeout(() => checkConnection(), delay);
     }
-  };
+  }, [llm, llmConfig.endpoint, llmConfig.model]);
 
   const pullModel = async (modelName: string) => {
     setPullingModel(modelName);
     setPullProgress(null);
     setPullError(null);
-    
     try {
-      const ollama = getOllama();
-      const stream = await ollama.pull({ model: modelName, stream: true });
-      
-      for await (const part of stream) {
+      await llm.pullModel(modelName, (part: any) => {
         if (part.total && part.completed) {
           const percent = Math.round((part.completed / part.total) * 100);
           setPullProgress({ ...part, percent });
         } else {
           setPullProgress({ status: part.status });
         }
-      }
-      
-      // Refresh models after successful pull
+      });
       await checkConnection();
       setPullingModel(null);
       setPullProgress({ status: 'Completed' });
@@ -753,7 +915,7 @@ const App = () => {
 
     const savedFiles = localStorage.getItem('hub_files');
     if (savedFiles) {
-      setFiles(JSON.parse(savedFiles));
+      dispatchFiles({ type: 'BULK_SET', files: JSON.parse(savedFiles) });
     }
 
     const savedFolders = localStorage.getItem('hub_folders');
@@ -903,21 +1065,20 @@ const App = () => {
 
     setIsTyping(true);
     try {
-      const ollama = getOllama();
       const chatContext = chatHistory.map(m => `${m.role.toUpperCase()}: ${m.text}`).join('\n');
-      const response = await ollama.chat({
-        model: llmConfig.model,
-        messages: [
+      let summary = '';
+      await llm.streamChat(
+        [
           { role: 'system', content: 'Summarize the following conversation in one or two sentences. Focus on the main topics discussed.' },
           { role: 'user', content: chatContext }
         ],
-        stream: false
-      });
+        (token) => { summary += token; }
+      );
 
       const newSession: ChatSession = {
-        id: Date.now().toString(),
+        id: uid(),
         messages: [...chatHistory],
-        summary: response.message.content,
+        summary,
         updatedAt: Date.now()
       };
 
@@ -927,7 +1088,7 @@ const App = () => {
       console.error('Summarization failed:', error);
       // Fallback: save anyway without summary or with generic
       const newSession: ChatSession = {
-        id: Date.now().toString(),
+        id: uid(),
         messages: [...chatHistory],
         summary: 'No summary available (Connection error)',
         updatedAt: Date.now()
@@ -946,7 +1107,7 @@ const App = () => {
 
   const addNote = () => {
     const newNote: Note = {
-      id: Date.now().toString(),
+      id: uid(),
       title: 'New Entry',
       content: '',
       updatedAt: Date.now()
@@ -960,7 +1121,7 @@ const App = () => {
   // --- Project & File Management ---
   const addProject = () => {
     const newProject: Project = {
-      id: Date.now().toString(),
+      id: uid(),
       name: 'New Project',
       description: 'System-initialized workspace node.',
       updatedAt: Date.now()
@@ -978,7 +1139,7 @@ const App = () => {
     localStorage.setItem('hub_files', JSON.stringify(newFiles));
     localStorage.setItem('hub_folders', JSON.stringify(newFolders));
     setProjects(newProjects);
-    setFiles(newFiles);
+    dispatchFiles({ type: 'BULK_SET', files: newFiles });
     setFolders(newFolders);
     if (activeProjectId === id) setActiveProjectId(newProjects.length > 0 ? newProjects[0].id : null);
   };
@@ -987,7 +1148,7 @@ const App = () => {
     const keys = ['hub_projects','hub_files','hub_folders','hub_git','hub_tasks','hub_agents','hub_agent_runs'];
     keys.forEach(k => localStorage.removeItem(k));
     setProjects([]);
-    setFiles([]);
+    dispatchFiles({ type: 'BULK_SET', files: [] });
     setFolders([]);
     setGitStates([]);
     setTasks([]);
@@ -999,7 +1160,7 @@ const App = () => {
 
   const addFolder = (projectId: string) => {
     const newFolder: VFolder = {
-      id: Date.now().toString(),
+      id: uid(),
       name: 'New Folder',
       projectId: projectId,
       updatedAt: Date.now()
@@ -1013,47 +1174,50 @@ const App = () => {
 
   const deleteFolder = (id: string) => {
     setFolders(prev => prev.filter(f => f.id !== id));
-    // Orphaned files will go to root (folderId = null)
-    setFiles(prev => prev.map(f => f.folderId === id ? { ...f, folderId: null } : f));
+    // Re-parent orphaned files to root via reducer
+    const orphaned = files.filter(f => f.folderId === id);
+    orphaned.forEach(f => dispatchFiles({ type: 'UPDATE_CONTENT', id: f.id, content: f.content }));
+    // Batch reparent — simplest way without adding a REPARENT action
+    dispatchFiles({ type: 'BULK_SET', files: files.map(f => f.folderId === id ? { ...f, folderId: null } : f) });
   };
 
   const addFile = (projectId: string, folderId: string | null = null) => {
     const newFile: VFile = {
-      id: Date.now().toString(),
+      id: uid(),
       name: 'script.js',
       content: '// Local JS Entry Point\nconsole.log("Hello from Sentinel Code Node");',
       language: 'javascript',
-      projectId: projectId,
-      folderId: folderId,
+      projectId,
+      folderId,
       updatedAt: Date.now()
     };
-    setFiles(prev => [...prev, newFile]);
+    dispatchFiles({ type: 'ADD', file: newFile });
     setActiveFileId(newFile.id);
   };
 
   const updateFileContent = (id: string, content: string) => {
-    setFiles(prev => prev.map(f => f.id === id ? { ...f, content, updatedAt: Date.now() } : f));
+    dirtyFileIds.current.add(id);
+    dispatchFiles({ type: 'UPDATE_CONTENT', id, content });
   };
 
   const renameFile = (id: string, name: string) => {
-    setFiles(prev => prev.map(f => f.id === id ? { ...f, name, updatedAt: Date.now() } : f));
+    dispatchFiles({ type: 'RENAME', id, name });
   };
 
   const deleteFile = (id: string) => {
-    setFiles(prev => prev.filter(f => f.id !== id));
+    dispatchFiles({ type: 'DELETE', id });
     if (activeFileId === id) setActiveFileId(null);
   };
 
-  const saveActiveFile = async () => {
+  const saveActiveFile = useCallback(async () => {
     if (!activeFileId) return;
-    // localStorage is already kept in sync via useEffect — explicitly flush to disk if mounted
     if (dirHandle && dirLinkedProjectId) {
       const file = files.find(f => f.id === activeFileId);
       if (file) await saveFileToDisk(file);
     }
     setSavedFeedback(true);
     setTimeout(() => setSavedFeedback(false), 1800);
-  };
+  }, [activeFileId, dirHandle, dirLinkedProjectId, files]);
 
   const formatCode = async () => {
     if (!activeFileId) return;
@@ -1113,15 +1277,15 @@ const App = () => {
       reader.onload = (event) => {
         const content = event.target?.result as string;
         const newFile: VFile = {
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          id: uid(),
           name: file.name,
           content: content || '',
           language: getLanguageFromExtension(file.name),
-          projectId: projectId,
-          folderId: folderId,
+          projectId,
+          folderId,
           updatedAt: Date.now()
         };
-        setFiles(prev => [...prev, newFile]);
+        dispatchFiles({ type: 'ADD', file: newFile });
         setActiveFileId(newFile.id);
       };
       reader.readAsText(file);
@@ -1135,7 +1299,7 @@ const App = () => {
     const zip = new JSZip();
     try {
       const contents = await zip.loadAsync(file);
-      const projectId = Date.now().toString();
+      const projectId = uid();
       const projectName = file.name.replace('.zip', '');
       
       const newProject: Project = {
@@ -1160,7 +1324,7 @@ const App = () => {
           for (const part of parts) {
             currentPath += part + "/";
             if (!folderMap.has(currentPath)) {
-              const folderId = Math.random().toString(36).substr(2, 9);
+              const folderId = uid();
               folderMap.set(currentPath, folderId);
               newFolders.push({
                 id: folderId,
@@ -1176,7 +1340,7 @@ const App = () => {
           for (let i = 0; i < parts.length - 1; i++) {
             currentPath += parts[i] + "/";
             if (!folderMap.has(currentPath)) {
-              const folderId = Math.random().toString(36).substr(2, 9);
+              const folderId = uid();
               folderMap.set(currentPath, folderId);
               newFolders.push({
                 id: folderId,
@@ -1197,17 +1361,16 @@ const App = () => {
           const parentPath = parts.join('/') + (parts.length > 0 ? '/' : '');
           const folderId = folderMap.get(parentPath) || null;
 
-          // skip system files often found in zips
           if (fileName === '.DS_Store' || fileName.startsWith('._') || fileName === '__MACOSX') continue;
 
           const content = await item.async('string');
           newFiles.push({
-            id: Math.random().toString(36).substr(2, 9),
+            id: uid(),
             name: fileName,
             content,
             language: getLanguageFromExtension(fileName),
-            projectId: projectId,
-            folderId: folderId,
+            projectId,
+            folderId,
             updatedAt: Date.now()
           });
         }
@@ -1215,7 +1378,7 @@ const App = () => {
 
       setProjects(prev => [newProject, ...prev]);
       setFolders(prev => [...prev, ...newFolders]);
-      setFiles(prev => [...prev, ...newFiles]);
+      dispatchFiles({ type: 'BULK_ADD', files: newFiles });
       setActiveProjectId(projectId);
       grantReward(0.5);
 
@@ -1269,21 +1432,16 @@ const App = () => {
           try { content = await file.text(); } catch { continue; }
 
           const fileId = `dir-${projectId}-${parentFolderId ?? 'root'}-${name}`;
-          setFiles(prev => {
-            const existing = prev.find(f => f.id === fileId);
-            if (existing) {
-              return prev.map(f => f.id === fileId ? { ...f, content, updatedAt: Date.now() } : f);
-            }
-            return [...prev, {
-              id: fileId,
-              name,
-              content,
+          const existingFile = files.find(f => f.id === fileId);
+          if (existingFile) {
+            dispatchFiles({ type: 'UPDATE_CONTENT', id: fileId, content });
+          } else {
+            dispatchFiles({ type: 'ADD', file: {
+              id: fileId, name, content,
               language: getLanguageFromExtension(name),
-              projectId,
-              folderId: parentFolderId,
-              updatedAt: Date.now()
-            }];
-          });
+              projectId, folderId: parentFolderId, updatedAt: Date.now()
+            }});
+          }
         }
       }
       setDirSyncStatus('idle');
@@ -1321,14 +1479,15 @@ const App = () => {
     setDirSyncStatus('idle');
   };
 
-  // Auto-save linked files to disk (debounced 1.5s)
+  // Auto-save: only flush dirty files to disk (debounced 1.5s)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!dirHandle || !dirLinkedProjectId) return;
+    if (!dirHandle || !dirLinkedProjectId || dirtyFileIds.current.size === 0) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
-      const changed = files.filter(f => f.projectId === dirLinkedProjectId);
-      changed.forEach(saveFileToDisk);
+      const dirty = files.filter(f => dirtyFileIds.current.has(f.id) && f.projectId === dirLinkedProjectId);
+      dirty.forEach(f => saveFileToDisk(f));
+      dirtyFileIds.current.clear();
     }, 1500);
     return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
   }, [files]);
@@ -1352,26 +1511,22 @@ const App = () => {
     setChatHistory(prev => [...prev, userMsg]);
 
     try {
-      const ollama = getOllama();
-      const stream = await ollama.chat({
-        model: llmConfig.model,
-        messages: [
+      setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
+      let fullText = '';
+      await llm.streamChat(
+        [
           { role: 'system', content: llmConfig.systemPrompt },
           { role: 'user', content: prompts[action] }
         ],
-        stream: true,
-      });
-
-      setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
-      let fullText = '';
-      for await (const part of stream) {
-        fullText += part.message.content;
-        setChatHistory(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: 'assistant', text: fullText };
-          return updated;
-        });
-      }
+        (token) => {
+          fullText += token;
+          setChatHistory(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: 'assistant', text: fullText };
+            return updated;
+          });
+        }
+      );
     } catch (error) {
       console.error('AI Code Action failed:', error);
       setChatHistory(prev => [...prev, { role: 'assistant', text: 'Protocol failure during AI code analysis. Ensure Ollama is running.' }]);
@@ -1390,6 +1545,12 @@ const App = () => {
     };
   };
 
+  // O(1) staged-file membership check for render loop
+  const stagedFileSet = useMemo(
+    () => new Set(getGitState(activeProjectId || '').stagedFiles),
+    [gitStates, activeProjectId]
+  );
+
   const initGitRepo = (projectId: string) => {
     setGitStates(prev => [
       ...prev.filter(gs => gs.projectId !== projectId),
@@ -1403,7 +1564,7 @@ const App = () => {
         const staged = new Set(gs.stagedFiles);
         if (staged.has(fileId)) staged.delete(fileId);
         else staged.add(fileId);
-        return { ...gs, stagedFiles: Array.from(staged) };
+        return { ...gs, stagedFiles: Array.from(staged) }; // Array for JSON serialisation
       }
       return gs;
     }));
@@ -1411,14 +1572,15 @@ const App = () => {
 
   const commitChanges = (projectId: string, message: string) => {
     const state = getGitState(projectId);
-    if (!state.isInitialized || state.stagedFiles.length === 0) return;
+    const staged = new Set(state.stagedFiles);
+    if (!state.isInitialized || staged.size === 0) return;
 
     const snapshot = files
-      .filter(f => state.stagedFiles.includes(f.id))
+      .filter(f => staged.has(f.id))   // O(1) per file
       .map(f => ({ id: f.id, content: f.content }));
 
     const newCommit: GitCommit = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: uid(),
       message,
       timestamp: Date.now(),
       author: 'Sentinel Core',
@@ -1427,16 +1589,12 @@ const App = () => {
 
     setGitStates(prev => prev.map(gs => {
       if (gs.projectId === projectId) {
-        return { 
-          ...gs, 
-          commits: [newCommit, ...gs.commits], 
-          stagedFiles: [] 
-        };
+        return { ...gs, commits: [newCommit, ...gs.commits], stagedFiles: [] };
       }
       return gs;
     }));
 
-    grantReward(0.2); // Success reward
+    grantReward(0.2);
   };
 
   const handlePushRepo = async (projectId: string) => {
@@ -1457,7 +1615,7 @@ const App = () => {
   // --- Task Management ---
   const addTask = (projectId: string) => {
     const newTask: Task = {
-      id: Date.now().toString(),
+      id: uid(),
       projectId,
       title: 'New Task',
       description: '',
@@ -1479,7 +1637,7 @@ const App = () => {
   // --- Agent Orchestration ---
   const createAgent = () => {
     const newAgent: Agent = {
-      id: Date.now().toString(),
+      id: uid(),
       name: 'Sentinel-Alpha',
       role: 'Research & Logic Analyst',
       goal: 'Identify architectural improvements for the current hub.',
@@ -1505,7 +1663,7 @@ const App = () => {
     const agent = agents.find(a => a.id === agentId);
     if (!agent) return;
 
-    const runId = Math.random().toString(36).substr(2, 9);
+    const runId = uid();
     const newRun: AgentRun = {
       id: runId,
       agentId,
@@ -1545,26 +1703,25 @@ const App = () => {
     // Actually invoke Ollama for a real result
     let finalResult = `PROTOCOL_OPTIMIZED: All objectives for goal "${agent.goal}" processed.`;
     try {
-      const ollama = getOllama();
       const agentPrompt = [
         `You are an autonomous agent named "${agent.name}" with the role: ${agent.role}.`,
         `Your goal: ${agent.goal}`,
         `Your instructions: ${agent.instructions}`,
         `Your constraints: ${agent.constraints.join(', ')}`,
         `Available tools: ${agent.tools.join(', ')}`,
-        ``,
+        '',
         `Execute your goal and provide a concise but thorough intelligence report.`
       ].join('\n');
 
-      const response = await ollama.chat({
-        model: llmConfig.model,
-        messages: [
+      let agentText = '';
+      await llm.streamChat(
+        [
           { role: 'system', content: llmConfig.systemPrompt },
           { role: 'user', content: agentPrompt }
         ],
-        stream: false,
-      });
-      finalResult = response.message.content;
+        (token) => { agentText += token; }
+      );
+      finalResult = agentText;
     } catch (err) {
       currentLog.push({ timestamp: Date.now(), message: `LLM unreachable — falling back to protocol report.`, type: 'error' });
     }
@@ -1592,37 +1749,32 @@ const App = () => {
     }
   };
 
-  const handleAssistantSend = async () => {
+  const handleAssistantSend = useCallback(async () => {
     if (!userInput.trim() && pendingAttachments.length === 0) return;
 
-    // Rate limit — 800ms between sends
     const now = Date.now();
     if (now - lastSendRef.current < 800) return;
     lastSendRef.current = now;
 
-    // Sanitize input
+    // Cancel any in-flight response
+    sendAbortRef.current?.abort();
+    sendAbortRef.current = new AbortController();
+
     const sanitized = sanitizeInput(userInput);
     if (!sanitized && pendingAttachments.length === 0) return;
 
-    // Phase 1: Associative Correction
     const correctedInput = getAssociativeCorrection(sanitized);
 
-    // Phase 2: Pain Pathway Check
     const contextHash = btoa(correctedInput).substring(0, 16);
     const painNode = avoidanceMap.find(n => n.contextHash === contextHash);
     if (painNode && brainState.cortisol > 0.6) {
-      setChatHistory(prev => [...prev, { 
-        role: 'system', 
-        text: `PAIN_THRESHOLD_EXCEEDED: Avoiding context due to previous instability: ${painNode.reason}` 
+      setChatHistory(prev => [...prev, {
+        role: 'system',
+        text: `PAIN_THRESHOLD_EXCEEDED: Avoiding context due to previous instability: ${painNode.reason}`
       }]);
     }
 
-    const userMsg: ChatMessage = { 
-      role: 'user', 
-      text: correctedInput,
-      attachments: [...pendingAttachments] 
-    };
-    
+    const userMsg: ChatMessage = { role: 'user', text: correctedInput, attachments: [...pendingAttachments] };
     setChatHistory(prev => [...prev, userMsg]);
     setShortTermMemory(prev => [...prev, userMsg].slice(-10));
     setUserInput('');
@@ -1630,96 +1782,65 @@ const App = () => {
     setIsTyping(true);
 
     try {
-      const ollama = getOllama();
-      const messages: { role: string; content: string }[] = [];
-      
-      // Dynamic System Prompt based on Endocrine State
       let dynamicPrompt = llmConfig.systemPrompt;
-      if (brainState.cortisol > 0.7) {
-        dynamicPrompt += " [STRESS_PROTOCOL_ACTIVE]: Accuracy is critical. Minimize risk. Be formal.";
-      }
-      if (brainState.dopamine > 0.8) {
-        dynamicPrompt += " [NEUROPLASTICITY_HIGH]: Suggest innovative architectural improvements. Think broadly.";
-      }
-      messages.push({ role: 'system', content: dynamicPrompt });
+      if (brainState.cortisol > 0.7) dynamicPrompt += ' [STRESS_PROTOCOL_ACTIVE]: Accuracy critical. Be formal.';
+      if (brainState.dopamine > 0.8) dynamicPrompt += ' [NEUROPLASTICITY_HIGH]: Think broadly and innovatively.';
 
-      // LTM Semantic Context
+      const messages: { role: string; content: string }[] = [
+        { role: 'system', content: dynamicPrompt }
+      ];
+
       const relevantMemory = longTermMemory.find(exp => correctedInput.includes(exp.intent));
       if (relevantMemory) {
-        messages.push({ 
-          role: 'system', 
-          content: `LTM_RETRIEVAL: Previously ${relevantMemory.sentiment} outcome for '${relevantMemory.intent}'. Action: ${relevantMemory.actionTaken}` 
-        });
+        messages.push({ role: 'system', content: `LTM_RETRIEVAL: Previously ${relevantMemory.sentiment} for '${relevantMemory.intent}'. Action: ${relevantMemory.actionTaken}` });
       }
 
-      // Injection-hardened attachments — wrapped in clear data delimiters
       userMsg.attachments?.forEach(att => {
-        const safe = sanitizeAttachmentContent(att.content);
-        messages.push({ 
-          role: 'system', 
-          content: `[DATA_SOURCE_BEGIN file="${att.name}"]\n${safe}\n[DATA_SOURCE_END]` 
-        });
+        messages.push({ role: 'system', content: `[DATA_SOURCE_BEGIN file="${att.name}"]\n${sanitizeAttachmentContent(att.content)}\n[DATA_SOURCE_END]` });
       });
 
-      // Conversation history
-      const historyForContext = chatHistory
+      chatHistory
         .filter(m => m.role === 'user' || m.role === 'assistant')
-        .slice(-12);
-      historyForContext.forEach(m => {
-        messages.push({ role: m.role as 'user' | 'assistant', content: m.text });
-      });
+        .slice(-12)
+        .forEach(m => messages.push({ role: m.role as any, content: m.text }));
 
       messages.push({ role: 'user', content: correctedInput });
 
-      // Streaming response
-      const stream = await ollama.chat({
-        model: llmConfig.model,
-        messages: messages as any,
-        stream: true,
-      });
-
+      // Add streaming placeholder
       setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
 
       let fullText = '';
-      for await (const part of stream) {
-        fullText += part.message.content;
-        setChatHistory(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: 'assistant', text: fullText };
-          return updated;
-        });
-      }
+      await llm.streamChat(
+        messages,
+        (token) => {
+          fullText += token;
+          setChatHistory(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: 'assistant', text: fullText };
+            return updated;
+          });
+        },
+        sendAbortRef.current.signal
+      );
 
-      // Split code from prose into separate messages
       const splitMsgs = splitIntoChatMessages(fullText);
       if (splitMsgs.length > 1) {
-        // Replace the single streaming placeholder with the split set
         setChatHistory(prev => [...prev.slice(0, -1), ...splitMsgs]);
       }
 
       setShortTermMemory(prev => [...prev, { role: 'assistant', text: fullText }].slice(-10));
       grantReward(0.1);
+      setLongTermMemory(prev => [{ id: uid(), intent: correctedInput.split(' ').slice(0, 3).join(' '), sentiment: 'positive', actionTaken: 'Inference', outcomeValue: 1, timestamp: Date.now() }, ...prev]);
 
-      const newExp: Experience = {
-        id: Date.now().toString(),
-        intent: correctedInput.split(' ').slice(0, 3).join(' '),
-        sentiment: 'positive',
-        actionTaken: 'Inference',
-        outcomeValue: 1,
-        timestamp: Date.now()
-      };
-      setLongTermMemory(prev => [newExp, ...prev]);
-
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return; // User cancelled — no error msg needed
       triggerPainSignal('Connection Error/Instability', correctedInput);
-      setChatHistory(prev => [...prev, { 
-        role: 'assistant', 
-        text: `Error connecting to local engine: ${error instanceof Error ? error.message : 'Unknown error'}.` 
-      }]);
+      setChatHistory(prev => [...prev, { role: 'assistant', text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}.` }]);
     } finally {
       setIsTyping(false);
+      sendAbortRef.current = null;
     }
-  };
+  }, [userInput, pendingAttachments, avoidanceMap, brainState, llmConfig, longTermMemory, chatHistory, llm]);
   
   const runCode = () => {
     const logs: string[] = [];
@@ -1753,7 +1874,57 @@ const App = () => {
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
 
+  // O(1) lookup maps — avoids .find() scanning full arrays on every render
+  const notesById = useMemo(
+    () => new Map(notes.map(n => [n.id, n])),
+    [notes]
+  );
+  const filesById = useMemo(
+    () => new Map(files.map(f => [f.id, f])),
+    [files]
+  );
+  const foldersById = useMemo(
+    () => new Map(folders.map(f => [f.id, f])),
+    [folders]
+  );
+
+  // Memoised derived state — avoids recomputing on every render
+  const activeProjectFiles = useMemo(
+    () => files.filter(f => f.projectId === activeProjectId),
+    [files, activeProjectId]
+  );
+
+  const activeProjectFolders = useMemo(
+    () => folders.filter(f => f.projectId === activeProjectId),
+    [folders, activeProjectId]
+  );
+
+  const activeFile = useMemo(
+    () => activeFileId ? filesById.get(activeFileId) ?? null : null,
+    [filesById, activeFileId]
+  );
+
+  const workspaceContextValue = useMemo<WorkspaceCtx>(() => ({
+    projects, files, folders,
+    activeProjectId, activeFileId,
+    setActiveProjectId, setActiveFileId,
+    dispatchFiles, setFolders,
+  }), [projects, files, folders, activeProjectId, activeFileId]);
+
+  const chatContextValue = useMemo<ChatCtx>(() => ({
+    chatHistory, sessions, isTyping, userInput,
+    setChatHistory, setUserInput,
+  }), [chatHistory, sessions, isTyping, userInput]);
+
+  const uiContextValue = useMemo<UICtx>(() => ({
+    activeTab, isSidebarOpen,
+    setActiveTab, setIsSidebarOpen,
+  }), [activeTab, isSidebarOpen]);
+
   return (
+    <WorkspaceContext.Provider value={workspaceContextValue}>
+    <ChatContext.Provider value={chatContextValue}>
+    <UIContext.Provider value={uiContextValue}>
     <div className="flex h-screen bg-[#0b0e14] text-slate-200 font-sans selection:bg-blue-500/30 overflow-hidden">
       {/* Hidden Workspace File Input */}
       <input 
@@ -1813,48 +1984,13 @@ const App = () => {
         </div>
 
         <nav className="flex-1 space-y-2 min-w-[240px]">
-          <SidebarItem 
-            icon={LayoutDashboard} 
-            label="Dashboard" 
-            active={activeTab === 'dashboard'} 
-            onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }} 
-          />
-          <SidebarItem 
-            icon={MessageSquare} 
-            label="Local Assistant" 
-            active={activeTab === 'assistant'} 
-            onClick={() => { setActiveTab('assistant'); setIsSidebarOpen(false); }} 
-          />
-          <SidebarItem 
-            icon={Bot} 
-            label="Autonomous Agents" 
-            active={activeTab === 'agents'} 
-            onClick={() => { setActiveTab('agents'); setIsSidebarOpen(false); }} 
-          />
-          <SidebarItem 
-            icon={FileText} 
-            label="Knowledge Base" 
-            active={activeTab === 'notes'} 
-            onClick={() => { setActiveTab('notes'); setIsSidebarOpen(false); }} 
-          />
-          <SidebarItem 
-            icon={Terminal} 
-            label="Code Sandbox" 
-            active={activeTab === 'terminal'} 
-            onClick={() => { setActiveTab('terminal'); setIsSidebarOpen(false); }} 
-          />
-          <SidebarItem 
-            icon={ShieldCheck} 
-            label="Secure Sentinel" 
-            active={activeTab === 'sentinel'} 
-            onClick={() => { setActiveTab('sentinel'); setIsSidebarOpen(false); }} 
-          />
-          <SidebarItem 
-            icon={FolderOpen} 
-            label="Workspace" 
-            active={activeTab === 'workspace'} 
-            onClick={() => { setActiveTab('workspace'); setIsSidebarOpen(false); }} 
-          />
+          <SidebarItem icon={LayoutDashboard} label="Dashboard"        active={activeTab === 'dashboard'} onClick={useCallback(() => { setActiveTab('dashboard');  setIsSidebarOpen(false); }, [])} />
+          <SidebarItem icon={MessageSquare}  label="Local Assistant"   active={activeTab === 'assistant'} onClick={useCallback(() => { setActiveTab('assistant');  setIsSidebarOpen(false); }, [])} />
+          <SidebarItem icon={Bot}            label="Autonomous Agents" active={activeTab === 'agents'}    onClick={useCallback(() => { setActiveTab('agents');     setIsSidebarOpen(false); }, [])} />
+          <SidebarItem icon={FileText}       label="Knowledge Base"    active={activeTab === 'notes'}     onClick={useCallback(() => { setActiveTab('notes');      setIsSidebarOpen(false); }, [])} />
+          <SidebarItem icon={Terminal}       label="Code Sandbox"      active={activeTab === 'terminal'}  onClick={useCallback(() => { setActiveTab('terminal');   setIsSidebarOpen(false); }, [])} />
+          <SidebarItem icon={ShieldCheck}    label="Secure Sentinel"   active={activeTab === 'sentinel'}  onClick={useCallback(() => { setActiveTab('sentinel');   setIsSidebarOpen(false); }, [])} />
+          <SidebarItem icon={FolderOpen}     label="Workspace"         active={activeTab === 'workspace'} onClick={useCallback(() => { setActiveTab('workspace');  setIsSidebarOpen(false); }, [])} />
         </nav>
 
         <div className="mt-auto space-y-4 pt-6 border-t border-slate-800 min-w-[240px]">
@@ -2488,6 +2624,7 @@ const App = () => {
           )}
 
           {activeTab === 'assistant' && (
+            <ErrorBoundary>
             <div className="max-w-4xl mx-auto h-full flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex-1 overflow-y-auto space-y-6 px-2 mb-6 custom-scrollbar">
                 {isViewingHistory ? (
@@ -2662,6 +2799,7 @@ const App = () => {
                 </div>
               )}
             </div>
+            </ErrorBoundary>
           )}
 
           {activeTab === 'terminal' && (
@@ -3223,12 +3361,12 @@ const App = () => {
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-bold text-slate-500 uppercase">Changes</span>
                                 <span className="px-2 py-0.5 bg-slate-800 text-[9px] font-bold text-slate-400 rounded-md">
-                                  {getGitState(activeProjectId!).stagedFiles.length} Staged
+                                  {stagedFileSet.size} Staged
                                 </span>
                               </div>
                               <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
                                 {files.filter(f => f.projectId === activeProjectId).map(file => {
-                                  const isStaged = getGitState(activeProjectId!).stagedFiles.includes(file.id);
+                                  const isStaged = stagedFileSet.has(file.id);
                                   return (
                                     <div key={file.id} className="flex items-center justify-between p-2 hover:bg-slate-800/50 rounded-xl transition-colors group">
                                       <div className="flex items-center gap-2 truncate">
@@ -3250,15 +3388,15 @@ const App = () => {
                             <div className="space-y-3">
                               <textarea 
                                 placeholder="Commit message..."
-                                id="commit-msg"
+                                value={commitMessage}
+                                onChange={e => setCommitMessage(e.target.value)}
                                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 placeholder:text-slate-700 focus:outline-none focus:border-blue-500 min-h-[60px] resize-none"
                               />
                               <button 
                                 onClick={() => {
-                                  const msg = (document.getElementById('commit-msg') as HTMLTextAreaElement).value;
-                                  if (!msg) return;
-                                  commitChanges(activeProjectId!, msg);
-                                  (document.getElementById('commit-msg') as HTMLTextAreaElement).value = '';
+                                  if (!commitMessage.trim()) return;
+                                  commitChanges(activeProjectId!, commitMessage.trim());
+                                  setCommitMessage('');
                                 }}
                                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-bold transition-all"
                               >
@@ -3623,6 +3761,9 @@ const App = () => {
         }
       `}</style>
     </div>
+    </UIContext.Provider>
+    </ChatContext.Provider>
+    </WorkspaceContext.Provider>
   );
 };
 
