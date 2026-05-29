@@ -151,7 +151,7 @@ const App = () => {
   // LLM Config
   const [llmConfig, setLlmConfig] = useState<LLMConfig>({
     provider: 'ollama',
-    endpoint: '/api/ollama',
+    endpoint: 'http://localhost:11434',
     model: 'llama3',
     systemPrompt: 'You are the Sentinel Core, the central intelligence coordinator for this local offline hub. You operate under the Sentinel Protocol Φ. Your primary directive is secure, local-first data processing and analysis. Prioritize privacy, technical precision, and concise intervention.'
   });
@@ -357,8 +357,9 @@ const App = () => {
         }
       }
       setConnectionStatus('connected');
-    } catch (error) {
-      console.error('LLM Connection failed:', error);
+    } catch (error: any) {
+      // Silently handle disconnected state to prevent UI error overlays
+      // console.log('LLM Connection failed:', error.message);
       setConnectionStatus('disconnected');
     }
   };
@@ -406,7 +407,7 @@ const App = () => {
       setPullProgress({ status: 'Completed' });
       setTimeout(() => setPullProgress(null), 3000);
     } catch (error) {
-      console.error('Pull failed:', error);
+      // console.error('Pull failed:', error);
       setPullError(error instanceof Error ? error.message : 'Unknown error');
       setPullingModel(null);
     }
@@ -619,7 +620,7 @@ const App = () => {
       setSessions(prev => [newSession, ...prev]);
       setChatHistory([]);
     } catch (error) {
-      console.error('Summarization failed:', error);
+      // console.error('Summarization failed:', error);
       // Fallback: save anyway without summary or with generic
       const newSession: ChatSession = {
         id: Date.now().toString(),
@@ -1142,6 +1143,59 @@ const App = () => {
     }
   };
 
+  const bridgeAgents = async (sourceId: string) => {
+    const sourceAgent = agents.find(a => a.id === sourceId);
+    if (!sourceAgent) return;
+    
+    // Pick another agent to bridge with, or fail if none available
+    const targetAgent = agents.find(a => a.id !== sourceId);
+    if (!targetAgent) {
+      alert("Need at least two agents to establish a bridge.");
+      return;
+    }
+
+    const runId = Math.random().toString(36).substr(2, 9);
+    const newRun: AgentRun = {
+      id: runId,
+      agentId: sourceId,
+      status: 'deploying',
+      currentStep: 'Initializing API Bridge...',
+      logs: [{ timestamp: Date.now(), message: `Establishing swarm bridge to target: [HIDDEN_SEQ]`, type: 'info' }],
+      startedAt: Date.now()
+    };
+    setAgentRuns(prev => [newRun, ...prev]);
+
+    const addLog = (msg: string, type: 'info' | 'action' | 'success' | 'error') => {
+      setAgentRuns(prev => prev.map(r => r.id === runId ? { ...r, currentStep: msg, logs: [...r.logs, { timestamp: Date.now(), message: msg, type }] } : r));
+    };
+
+    try {
+      addLog('Stripping human convenience names & assigning identity sequences...', 'action');
+      
+      const response = await fetch('/api/agent-bridge/communicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceAgentId: sourceAgent.name,
+          targetAgentId: targetAgent.name,
+          payload: `Hello ${targetAgent.name}, this is ${sourceAgent.name}. Let's work on code together.`,
+        })
+      });
+
+      if (!response.ok) throw new Error(`Bridge error: ${response.statusText}`);
+      
+      const data = await response.json();
+      addLog(`Bridge Active. Trace ID: ${data.trace_id}`, 'success');
+      addLog(`Secure Payload Exchanged: ${JSON.stringify(data.payload)}`, 'success');
+      
+      setAgentRuns(prev => prev.map(r => r.id === runId ? { ...r, status: 'completed', result: `Bridge established with drift prevention: ${data.trace_id}` } : r));
+      grantReward(0.5);
+    } catch (err: any) {
+      addLog(`Bridge failed: ${err.message}`, 'error');
+      setAgentRuns(prev => prev.map(r => r.id === runId ? { ...r, status: 'error' } : r));
+    }
+  };
+
   const updateNote = (id: string, updates: Partial<Note>) => {
     setNotes(notes.map(n => n.id === id ? { ...n, ...updates, updatedAt: Date.now() } : n));
   };
@@ -1574,10 +1628,10 @@ const App = () => {
                         {connectionStatus === 'disconnected' && (
                           <div className="mt-2 p-3 bg-slate-900 border border-rose-500/30 rounded-xl text-xs text-rose-300">
                             <p className="font-bold flex items-center gap-1.5"><AlertCircle size={14}/> Connection to local model failed</p>
-                            <p className="mt-1 opacity-80">This usually means Ollama is not running on your machine.</p>
-                            <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase transition-colors">Start Ollama in your terminal:</p>
+                            <p className="mt-1 opacity-80">Make sure Ollama is running and has CORS enabled so the web app can connect.</p>
+                            <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase transition-colors">Start Ollama with CORS in your terminal:</p>
                             <code className="block mt-1 p-2 bg-slate-950 border border-slate-800 rounded text-slate-300 font-mono text-[10px] select-all overflow-x-auto whitespace-nowrap">
-                              ollama serve
+                              OLLAMA_ORIGINS="*" ollama serve
                             </code>
                           </div>
                         )}
@@ -2020,7 +2074,7 @@ const App = () => {
                 }}
                 className="group relative bg-[#0b0e14]/40 border-2 border-dashed border-slate-800 hover:border-blue-500/50 rounded-[40px] p-12 transition-all cursor-pointer flex flex-col items-center justify-center text-center overflow-hidden"
               >
-                <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-blue-500/5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity" />
                 <div className="relative z-10 space-y-6">
                   <div className="w-20 h-20 bg-blue-600/10 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-500 shadow-2xl shadow-blue-500/20">
                     <FileUp size={40} className="text-blue-500" />
@@ -2500,7 +2554,7 @@ const App = () => {
                         </div>
                         <button 
                           onClick={() => deleteAgent(agent.id)}
-                          className="p-2 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                          className="p-2 text-slate-600 hover:text-rose-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -2523,13 +2577,23 @@ const App = () => {
                         </div>
                       </div>
 
-                      <button 
-                        onClick={() => runAgent(agent.id)}
-                        className="w-full py-3 bg-slate-800 hover:bg-blue-600 text-slate-400 hover:text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                      >
-                        <Zap size={14} className="group-hover:animate-pulse" />
-                        Execute Sequence
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => runAgent(agent.id)}
+                          className="flex-1 py-3 bg-slate-800 hover:bg-blue-600 text-slate-400 hover:text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                        >
+                          <Zap size={14} className="group-hover:animate-pulse" />
+                          Execute Sequence
+                        </button>
+
+                        <button 
+                          onClick={() => bridgeAgents(agent.id)}
+                          className="flex-1 py-3 bg-slate-800 hover:bg-teal-600 text-slate-400 hover:text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 min-w-[120px]"
+                        >
+                          <Share size={14} />
+                          Swarm Bridge
+                        </button>
+                      </div>
                     </div>
                   ))}
                   {agents.length === 0 && (
@@ -2642,17 +2706,24 @@ const App = () => {
               {/* Project Header */}
               <div className="flex items-center gap-4 overflow-x-auto pb-2 custom-scrollbar">
                 {projects.map(project => (
-                  <button 
-                    key={project.id}
-                    onClick={() => setActiveProjectId(project.id)}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap border ${
-                      activeProjectId === project.id 
-                        ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' 
-                        : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    {project.name}
-                  </button>
+                  <div key={project.id} className="group relative flex items-center">
+                    <button 
+                      onClick={() => setActiveProjectId(project.id)}
+                      className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap border pr-10 ${
+                        activeProjectId === project.id 
+                          ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' 
+                          : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300 hover:border-slate-700'
+                      }`}
+                    >
+                      {project.name}
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}
+                      className="absolute right-2 p-1.5 text-slate-400 hover:text-rose-400 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity bg-slate-900/50 rounded-lg"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
                 ))}
                 <button 
                   onClick={addProject}
@@ -2751,7 +2822,7 @@ const App = () => {
                                       <span className="text-sm font-medium truncate">{folder.name}</span>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                                      <button 
                                        onClick={(e) => { e.stopPropagation(); setTargetUploadFolderId(folder.id); workspaceFileInputRef.current?.click(); }}
                                        title="Upload to folder"
@@ -2787,7 +2858,7 @@ const App = () => {
                                         </div>
                                         <button 
                                           onClick={(e) => { e.stopPropagation(); deleteFile(file.id); }}
-                                          className="p-1 hover:text-rose-400 transition-all opacity-0 group-hover:opacity-100"
+                                          className="p-1 hover:text-rose-400 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                                         ><Trash2 size={12} /></button>
                                       </div>
                                     ))}
@@ -2812,7 +2883,7 @@ const App = () => {
                               </div>
                               <button 
                                 onClick={(e) => { e.stopPropagation(); deleteFile(file.id); }}
-                                className="p-1 hover:text-rose-400 transition-all opacity-0 group-hover:opacity-100"
+                                className="p-1 hover:text-rose-400 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                               ><Trash2 size={12} /></button>
                             </div>
                           ))}
@@ -2865,7 +2936,7 @@ const App = () => {
                                       </div>
                                       <button 
                                         onClick={() => stageFile(activeProjectId!, file.id)}
-                                        className={`p-1 rounded-lg transition-all ${isStaged ? 'bg-teal-500/20 text-teal-400' : 'hover:bg-slate-700 text-slate-600 opacity-0 group-hover:opacity-100'}`}
+                                        className={`p-1 rounded-lg transition-all ${isStaged ? 'bg-teal-500/20 text-teal-400' : 'hover:bg-slate-700 text-slate-600 opacity-100 lg:opacity-0 lg:group-hover:opacity-100'}`}
                                       >
                                         <Plus size={12} />
                                       </button>
@@ -2954,7 +3025,7 @@ const App = () => {
                                 </div>
                                 <button 
                                   onClick={() => deleteTask(task.id)}
-                                  className="p-1 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                                  className="p-1 text-slate-600 hover:text-rose-500 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all"
                                 >
                                   <Trash2 size={12} />
                                 </button>

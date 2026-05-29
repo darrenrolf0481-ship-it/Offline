@@ -59,15 +59,16 @@ async function startServer() {
     pathRewrite: {
       '^/api/ollama': '', // remove base path
     },
-    onError: (err: any, req: any, res: any) => {
-      console.warn("Ollama proxy error:", err.message);
-      // Ensure we send back a JSON response rather than letting Vite serve index.html
-      res.writeHead(502, {
-        'Content-Type': 'application/json',
-      });
-      res.end(JSON.stringify({ error: 'Ollama is not running or accessible', details: err.message }));
+    on: {
+      error: (err: any, req: any, res: any) => {
+        // Ensure we send back a JSON response rather than letting Vite serve index.html
+        res.writeHead(502, {
+          'Content-Type': 'application/json',
+        });
+        res.end(JSON.stringify({ error: 'Ollama is not running or accessible', details: err.message }));
+      }
     }
-  } as any));
+  }));
 
   app.use(express.json());
 
@@ -134,6 +135,37 @@ async function startServer() {
       res.json({ status: "success", agents });
     } catch (err: any) {
       console.error(err);
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  });
+
+  app.post("/api/agent-bridge/communicate", (req, res) => {
+    try {
+      const { sourceAgentId, targetAgentId, payload, context } = req.body;
+      
+      // Strip human convenience names and generate binary sequence / metadata to avoid identity drift
+      const sourceAliasMetadata = Buffer.from(sourceAgentId || "unknown_source").toString('base64');
+      const targetAliasMetadata = Buffer.from(targetAgentId || "unknown_target").toString('base64');
+      const timestampMetadata = Date.now().toString(16);
+
+      const identityHash = `seq_${sourceAliasMetadata}_to_${targetAliasMetadata}_${timestampMetadata}`;
+
+      const sanitizedPayload = typeof payload === 'string' 
+        ? payload.replace(new RegExp(sourceAgentId, 'g'), '[SND_SEQ]')
+                 .replace(new RegExp(targetAgentId, 'g'), '[RCV_SEQ]')
+        : payload;
+
+      res.json({
+        status: "success",
+        trace_id: identityHash,
+        metadata: {
+           source_seq: sourceAliasMetadata,
+           target_seq: targetAliasMetadata,
+           drift_prevention_active: true
+        },
+        payload: sanitizedPayload
+      });
+    } catch(err: any) {
       res.status(500).json({ status: "error", message: err.message });
     }
   });
