@@ -8,13 +8,14 @@
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit && eslint . --ext .ts,.tsx",
+    "format": "prettier --write .",
+    "test": "vitest run"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@tailwindcss/vite": "^4.2.0",
     "cheerio": "^1.2.0",
-    "clsx": "^2.1.1",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "framer-motion": "^12.38.0",
@@ -29,13 +30,17 @@
     "react-dom": "^19.2.4",
     "recharts": "^3.8.1",
     "simple-git": "^3.36.0",
-    "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.0",
     "turndown": "^7.2.4",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
     "@types/cors": "^2.8.19",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "vitest": "^2.0.0",
     "@types/express": "^5.0.6",
     "@types/http-proxy-middleware": "^0.19.3",
     "@types/node": "^22.14.0",

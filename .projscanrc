@@ -1,0 +1,20 @@
+{
+  "ignore": [
+    "serena-repo/**",
+    "my-SuperAGI/**",
+    "vibe-coding-repo/**",
+    "agency-agents-repo/**",
+    "github-mcp-repo/**"
+  ],
+  "disableRules": [
+    "unused-dependency-tailwindcss",
+    "cycle-detected-1",
+    "unused-dependency-cheerio",
+    "unused-dependency-glob",
+    "unused-dependency-simple-git",
+    "unused-dependency-turndown",
+    "unused-dependency-zod",
+    "unused-dependency-@typescript-eslint/eslint-plugin",
+    "unused-dependency-@typescript-eslint/parser"
+  ]
+}

@@ -9,7 +9,7 @@ async function main() {
     {
       requestInit: {
         headers: {
-          "Authorization": "Bearer DUMMY_TOKEN"
+          "Authorization": `Bearer ${process.env.GITHUB_TOKEN ?? ""}`
         }
       }
     }

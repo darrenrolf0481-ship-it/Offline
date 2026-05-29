@@ -69,9 +69,9 @@ export default function App() {
             });
         } else {
           const userData =  {
-            "name" : "SuperAGI User",
-            "email" : "super6@agi.com",
-            "password" : "pass@123",
+            "name" : process.env.NEXT_PUBLIC_DEV_USER_NAME,
+            "email" : process.env.NEXT_PUBLIC_DEV_USER_EMAIL,
+            "password" : process.env.NEXT_PUBLIC_DEV_USER_PASSWORD,
           }
 
           addUser(userData)
