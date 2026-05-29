@@ -48,7 +48,7 @@ const baseMcpTools = [
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = 3456;
 
   app.use(cors());
   
@@ -209,7 +209,7 @@ async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, allowedHosts: "all" },
       appType: "spa",
     });
     app.use(vite.middlewares);

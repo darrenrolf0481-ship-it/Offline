@@ -3305,5 +3305,27 @@ const App = () => {
   );
 };
 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 24, fontFamily: 'monospace', background: '#0b0e14', color: '#f87171', minHeight: '100vh' }}>
+          <h2 style={{ marginBottom: 12 }}>App Error</h2>
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{this.state.error.message}</pre>
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', opacity: 0.6, marginTop: 12 }}>{this.state.error.stack}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const root = createRoot(document.getElementById('root')!);
-root.render(<App />);
+root.render(<ErrorBoundary><App /></ErrorBoundary>);
