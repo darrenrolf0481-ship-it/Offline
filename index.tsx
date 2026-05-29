@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext, memo, useReducer, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import JSZip from 'jszip';
@@ -31,6 +31,7 @@ import {
   Zap,
   Play,
   ShieldCheck,
+  Cpu as Processor,
   X,
   Github,
   Upload,
@@ -47,25 +48,26 @@ import {
   Paperclip,
   FilePlus,
   FileUp,
-  Search as SearchIcon,
   FolderOpen,
+  FolderPlus,
+  Folder,
+  GitBranch,
   FileCode,
+  Target,
+  Clock,
+  ChevronLeft,
   Code,
   Bug,
   Wand2,
   Save,
   Edit3,
   FilePenLine,
-  FolderPlus,
-  Folder,
   ChevronDown,
   Edit2,
-  GitBranch,
-  GitCommit,
+  GitCommit as GitCommitIcon,
   GitMerge,
   Share,
-  Bot,
-  Target
+  Bot
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -80,520 +82,18 @@ import {
   ReferenceArea
 } from 'recharts';
 
-// --- Constants & Types ---
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  updatedAt: number;
-}
+import {
+  Note, VFile, VFolder, GitCommit, GitState, Agent, AgentRun,
+  Task, Project, ChatMessage, ChatSession, LLMConfig, DownloadProgress,
+  Experience, BrainState, AvoidanceNode
+} from './types';
 
-interface VFile {
-  id: string;
-  name: string;
-  content: string;
-  language: string;
-  projectId: string;
-  folderId: string | null;
-  updatedAt: number;
-}
-
-interface VFolder {
-  id: string;
-  name: string;
-  projectId: string;
-  updatedAt: number;
-}
-
-interface GitCommit {
-  id: string;
-  message: string;
-  timestamp: number;
-  author: string;
-  files: { id: string, content: string }[];
-}
-
-interface GitState {
-  projectId: string;
-  stagedFiles: string[];
-  commits: GitCommit[];
-  isInitialized: boolean;
-}
-
-interface Agent {
-  id: string;
-  name: string;
-  role: string;
-  goal: string;
-  instructions: string;
-  constraints: string[];
-  tools: string[];
-  updatedAt: number;
-}
-
-interface AgentRun {
-  id: string;
-  agentId: string;
-  status: 'deploying' | 'running' | 'completed' | 'failed';
-  currentStep: string;
-  logs: { timestamp: number; message: string; type: 'info' | 'action' | 'success' | 'error' }[];
-  result?: string;
-  startedAt: number;
-}
-
-interface Task {
-  id: string;
-  projectId: string;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high';
-  status: 'pending' | 'completed';
-  updatedAt: number;
-}
-
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-  updatedAt: number;
-}
-
-interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
-  text: string;
-  attachments?: { name: string, content: string }[];
-}
-
-interface ChatSession {
-  id: string;
-  messages: ChatMessage[];
-  summary: string;
-  updatedAt: number;
-}
-
-interface LLMConfig {
-  provider: 'ollama' | 'custom';
-  endpoint: string;
-  model: string;
-  systemPrompt: string;
-}
-
-interface DownloadProgress {
-  status: string;
-  digest?: string;
-  total?: number;
-  completed?: number;
-  percent?: number;
-}
-
-// --- Brain Architecture Types ---
-interface Experience {
-  id: string;
-  intent: string;
-  sentiment: 'positive' | 'negative' | 'neutral';
-  actionTaken: string;
-  outcomeValue: number; // 0 to 1
-  timestamp: number;
-}
-
-interface BrainState {
-  dopamine: number; // 0 to 1 (Reward/Learning)
-  cortisol: number; // 0 to 1 (Stress/Caution)
-  lastUpdated: number;
-}
-
-interface AvoidanceNode {
-  contextHash: string;
-  weight: number; // Emotional weight
-  reason: string;
-}
-
-const POPULAR_MODELS = [
-  { name: 'llama3:8b', size: '4.7GB', desc: 'Most popular general purpose model' },
-  { name: 'phi3:mini', size: '2.3GB', desc: 'Powerful small model for faster inference' },
-  { name: 'mistral:latest', size: '4.1GB', desc: 'Reliable and fast open source model' },
-  { name: 'gemma2:9b', size: '5.5GB', desc: 'Google\'s latest lightweight model' },
-  { name: 'tinyllama:latest', size: '637MB', desc: 'Ultra-small for low resource systems' },
-  { name: 'moondream:latest', size: '829MB', desc: 'Vision-capable small model' },
-];
-
-// --- Components ---
-
-const SidebarItem = memo(({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick: () => void }) => (
-  <button
-    onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-      active 
-        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' 
-        : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
-    }`}
-  >
-    <Icon size={20} />
-    <span className="font-medium">{label}</span>
-  </button>
-));
-
-const StatCard = memo(({ icon: Icon, label, value, status }: { icon: any, label: string, value: string, status: string }) => (
-  <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-2xl flex items-center gap-4 hover:border-slate-700 transition-colors">
-    <div className="p-3 bg-slate-800 rounded-lg text-blue-400">
-      <Icon size={24} />
-    </div>
-    <div>
-      <p className="text-slate-500 text-sm font-medium">{label}</p>
-      <div className="flex items-center gap-2">
-        <h3 className="text-xl font-bold text-slate-100">{value}</h3>
-        <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold ${
-          status === 'optimal' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
-        }`}>
-          {status}
-        </span>
-      </div>
-    </div>
-  </div>
-));
-
-// --- Chat Hardening Utilities ---
-
-/** Strip null bytes, control chars, and cap length */
-const sanitizeInput = (raw: string): string => {
-  return raw
-    .replace(/\0/g, '')                        // null bytes
-    .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F]/g, '') // control chars except \t \n \r
-    .slice(0, 4000)                            // hard cap
-    .trim();
-};
-
-/** Prevent LLM prompt injection via attachments */
-const sanitizeAttachmentContent = (content: string): string => {
-  const MAX = 50_000;
-  return content
-    .replace(/\0/g, '')
-    .slice(0, MAX);
-};
-
-/** Parse a message into alternating text/code segments */
-interface MsgSegment {
-  type: 'text' | 'code';
-  content: string;
-  lang?: string;
-}
-
-const parseSegments = (text: string): MsgSegment[] => {
-  const segments: MsgSegment[] = [];
-  const regex = /```(\w*)\n?([\s\S]*?)```/g;
-  let last = 0;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > last) {
-      const prose = text.slice(last, match.index).trim();
-      if (prose) segments.push({ type: 'text', content: prose });
-    }
-    segments.push({ type: 'code', lang: match[1] || 'text', content: match[2].trim() });
-    last = match.index + match[0].length;
-  }
-  const tail = text.slice(last).trim();
-  if (tail) segments.push({ type: 'text', content: tail });
-  return segments.length ? segments : [{ type: 'text', content: text }];
-};
-
-/** After stream completes, if response mixes code + prose → split into separate ChatMessages */
-const splitIntoChatMessages = (fullText: string): ChatMessage[] => {
-  const segments = parseSegments(fullText);
-  if (segments.length <= 1) return [{ role: 'assistant', text: fullText }];
-  const hasCode = segments.some(s => s.type === 'code');
-  const hasText = segments.some(s => s.type === 'text');
-  if (!hasCode || !hasText) return [{ role: 'assistant', text: fullText }];
-  // Separate: prose first, then each code block as its own message
-  const msgs: ChatMessage[] = [];
-  const prose = segments.filter(s => s.type === 'text').map(s => s.content).join('\n\n').trim();
-  if (prose) msgs.push({ role: 'assistant', text: prose });
-  segments.filter(s => s.type === 'code').forEach(s => {
-    msgs.push({ role: 'assistant', text: '```' + (s.lang || '') + '\n' + s.content + '\n```' });
-  });
-  return msgs;
-};
-
-// --- MessageBubble Component ---
-const MessageBubble = memo(({ msg }: { msg: ChatMessage; key?: React.Key }) => {
-  const [copied, setCopied] = React.useState(false);
-
-  const copyFull = () => {
-    navigator.clipboard.writeText(msg.text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    });
-  };
-
-  const isUser = msg.role === 'user';
-  const isSystem = msg.role === 'system';
-  const segments = parseSegments(msg.text);
-
-  if (isSystem) {
-    return (
-      <div className="flex justify-center">
-        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-mono px-4 py-2 rounded-xl max-w-[90%] text-center">
-          {msg.text}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} group`}>
-      <div className={`relative max-w-[85%] ${isUser ? '' : 'w-full'}`}>
-        {/* Copy whole message button */}
-        <button
-          onClick={copyFull}
-          className={`absolute -top-2 ${isUser ? 'left-0 -translate-x-full pl-0 pr-2' : 'right-0 translate-x-0 pr-0 pl-2'} opacity-0 group-hover:opacity-100 transition-opacity z-10`}
-          title="Copy message"
-        >
-          <span className={`flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-lg ${
-            copied ? 'bg-teal-500/20 text-teal-400' : 'bg-slate-800 text-slate-500 hover:text-slate-300'
-          }`}>
-            {copied ? <CheckCircle2 size={10} /> : <Download size={10} />}
-            {copied ? 'Copied' : 'Copy'}
-          </span>
-        </button>
-
-        <div className={`rounded-2xl overflow-hidden ${
-          isUser
-            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-            : 'bg-slate-900/80 border border-slate-800 text-slate-200'
-        }`}>
-          {segments.map((seg, idx) => {
-            if (seg.type === 'code') {
-              return (
-                <div key={idx}><CodeBlock lang={seg.lang || 'text'} code={seg.content} /></div>
-              );
-            }
-            return (
-              <div key={idx} className="px-4 py-3">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{seg.content}</p>
-              </div>
-            );
-          })}
-
-          {msg.attachments && msg.attachments.length > 0 && (
-            <div className="px-4 pb-3 pt-1 border-t border-white/10 flex flex-wrap gap-2">
-              {msg.attachments.map((att, idx) => (
-                <div key={idx} className="flex items-center gap-1.5 bg-blue-700/30 px-2 py-1 rounded text-[10px] font-mono">
-                  <Paperclip size={10} />
-                  {att.name}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-});
-
-/** Inline code block with its own copy button */
-const CodeBlock = memo(({ lang, code }: { lang: string; code: string }) => {
-  const [copied, setCopied] = React.useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(code).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    });
-  };
-  return (
-    <div className="border-t border-slate-800/60 first:border-t-0">
-      <div className="flex items-center justify-between px-4 py-2 bg-slate-950/60 border-b border-slate-800/40">
-        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest font-mono">{lang}</span>
-        <button
-          onClick={copy}
-          className={`flex items-center gap-1.5 text-[9px] font-bold px-2 py-1 rounded-lg transition-all ${
-            copied ? 'bg-teal-500/20 text-teal-400' : 'bg-slate-800 text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          {copied ? <CheckCircle2 size={10} /> : <Download size={10} />}
-          {copied ? 'Copied' : 'Copy'}
-        </button>
-      </div>
-      <pre className="px-4 py-3 font-mono text-xs text-blue-200/80 leading-relaxed overflow-x-auto custom-scrollbar whitespace-pre">{code}</pre>
-    </div>
-  );
-});
-
-// ─── Stable ID Generator (crypto.randomUUID, no extra dep) ──────────────────
-const uid = () => crypto.randomUUID();
-
-// ─── Error Boundary ──────────────────────────────────────────────────────────
-interface EBState { hasError: boolean; error?: Error }
-interface EBProps { children: React.ReactNode; fallback?: React.ReactNode }
-
-class ErrorBoundary extends React.Component<EBProps, EBState> {
-  constructor(props: EBProps) {
-    super(props);
-    (this as any).state = { hasError: false } as EBState;
-  }
-
-  static getDerivedStateFromError(error: Error): EBState {
-    return { hasError: true, error };
-  }
-
-  render() {
-    const s = (this as any).state as EBState;
-    const p = (this as any).props as EBProps;
-    if (s.hasError) {
-      return p.fallback ?? (
-        <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm space-y-2">
-          <p className="font-bold">Something went wrong in this panel.</p>
-          <p className="font-mono text-xs opacity-70">{s.error?.message}</p>
-          <button
-            onClick={() => (this as any).setState({ hasError: false })}
-            className="px-4 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 rounded-xl text-xs font-bold transition-all"
-          >
-            Retry
-          </button>
-        </div>
-      );
-    }
-    return p.children;
-  }
-}
-
-// ─── Files Reducer (prevents dirty-flag race on setFiles) ────────────────────
-type FileAction =
-  | { type: 'ADD'; file: VFile }
-  | { type: 'UPDATE_CONTENT'; id: string; content: string }
-  | { type: 'RENAME'; id: string; name: string }
-  | { type: 'DELETE'; id: string }
-  | { type: 'BULK_SET'; files: VFile[] }
-  | { type: 'BULK_ADD'; files: VFile[] };
-
-const filesReducer = (state: VFile[], action: FileAction): VFile[] => {
-  switch (action.type) {
-    case 'ADD':
-      return [...state, action.file];
-    case 'UPDATE_CONTENT':
-      return state.map(f => f.id === action.id ? { ...f, content: action.content, updatedAt: Date.now() } : f);
-    case 'RENAME':
-      return state.map(f => f.id === action.id ? { ...f, name: action.name, updatedAt: Date.now() } : f);
-    case 'DELETE':
-      return state.filter(f => f.id !== action.id);
-    case 'BULK_SET':
-      return action.files;
-    case 'BULK_ADD': {
-      const existing = new Set(state.map(f => f.id));
-      return [...state, ...action.files.filter(f => !existing.has(f.id))];
-    }
-    default:
-      return state;
-  }
-};
-
-// ─── useLLM hook — isolates all Ollama logic from the UI ─────────────────────
-interface UseLLMOptions {
-  endpoint: string;
-  model: string;
-  systemPrompt: string;
-}
-
-const useLLM = (opts: UseLLMOptions) => {
-  const ollamaRef = useRef<Ollama | null>(null);
-  const abortRef  = useRef<AbortController | null>(null);
-
-  const getClient = useCallback(() => {
-    if (!ollamaRef.current || ollamaRef.current.config.host !== opts.endpoint) {
-      ollamaRef.current = new Ollama({ host: opts.endpoint });
-    }
-    return ollamaRef.current;
-  }, [opts.endpoint]);
-
-  const abort = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-  }, []);
-
-  const streamChat = useCallback(async (
-    messages: { role: string; content: string }[],
-    onToken: (token: string) => void,
-    signal?: AbortSignal
-  ): Promise<string> => {
-    const client = getClient();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-
-    // Merge external signal with internal one
-    if (signal) signal.addEventListener('abort', () => ctrl.abort());
-
-    let full = '';
-    const stream = await client.chat({
-      model: opts.model,
-      messages: messages as any,
-      stream: true,
-    });
-
-    for await (const part of stream) {
-      if (ctrl.signal.aborted) break;
-      const token = part.message.content;
-      full += token;
-      onToken(token);
-    }
-    abortRef.current = null;
-    return full;
-  }, [getClient, opts.model]);
-
-  const listModels = useCallback(async (): Promise<string[]> => {
-    const client = getClient();
-    const res = await client.list();
-    return res.models.map(m => m.name);
-  }, [getClient]);
-
-  const pullModel = useCallback(async (
-    modelName: string,
-    onProgress: (p: any) => void
-  ) => {
-    const client = getClient();
-    const stream = await client.pull({ model: modelName, stream: true });
-    for await (const part of stream) onProgress(part);
-  }, [getClient]);
-
-  // Cleanup on unmount
-  useEffect(() => () => abort(), [abort]);
-
-  return { streamChat, listModels, pullModel, abort };
-};
-
-// ─── Domain Contexts ────────────────────────────────────────────────────────
-
-interface WorkspaceCtx {
-  projects: Project[]; files: VFile[]; folders: VFolder[];
-  activeProjectId: string | null; activeFileId: string | null;
-  setActiveProjectId: (id: string | null) => void;
-  setActiveFileId: (id: string | null) => void;
-  dispatchFiles: React.Dispatch<FileAction>;
-  setFolders: React.Dispatch<React.SetStateAction<VFolder[]>>;
-}
-const WorkspaceContext = createContext<WorkspaceCtx | null>(null);
-export const useWorkspace = () => useContext(WorkspaceContext)!;
-
-interface ChatCtx {
-  chatHistory: ChatMessage[]; sessions: ChatSession[];
-  isTyping: boolean; userInput: string;
-  setChatHistory: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
-  setUserInput: React.Dispatch<React.SetStateAction<string>>;
-}
-const ChatContext = createContext<ChatCtx | null>(null);
-export const useChat = () => useContext(ChatContext)!;
-
-interface UICtx {
-  activeTab: string; isSidebarOpen: boolean;
-  setActiveTab: (tab: any) => void;
-  setIsSidebarOpen: (open: boolean) => void;
-}
-const UIContext = createContext<UICtx | null>(null);
-export const useUI = () => useContext(UIContext)!;
-
-// ────────────────────────────────────────────────────────────────────────────
+import { POPULAR_MODELS, SidebarItem, StatCard } from './src/components/Shared';
 
 const App = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [files, dispatchFiles] = useReducer(filesReducer, []);
+  const [files, setFiles] = useState<VFile[]>([]);
   const [folders, setFolders] = useState<VFolder[]>([]);
   const [gitStates, setGitStates] = useState<GitState[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -603,9 +103,6 @@ const App = () => {
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'assistant' | 'notes' | 'terminal' | 'sentinel' | 'workspace' | 'agents'>('dashboard');
   const [workspaceTab, setWorkspaceTab] = useState<'explorer' | 'git' | 'tasks'>('explorer');
-  const [mobileWorkspaceView, setMobileWorkspaceView] = useState<'panel' | 'editor'>('panel');
-  const [savedFeedback, setSavedFeedback] = useState(false);
-  const [commitMessage, setCommitMessage] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [targetUploadFolderId, setTargetUploadFolderId] = useState<string | null>(null);
@@ -620,16 +117,14 @@ const App = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobileNotesEditorOpen, setIsMobileNotesEditorOpen] = useState(false);
+  const [isMobileWorkspaceEditorOpen, setIsMobileWorkspaceEditorOpen] = useState(false);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isGithubModalOpen, setIsGithubModalOpen] = useState(false);
-
-  // Termux / Local Directory Mount State
-  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
-  const [dirSyncStatus, setDirSyncStatus] = useState<'idle' | 'syncing' | 'saving' | 'error'>('idle');
-  const [dirLinkedProjectId, setDirLinkedProjectId] = useState<string | null>(null);
-
+  const [isAgencyImportModalOpen, setIsAgencyImportModalOpen] = useState(false);
+  const [availableAgencyAgents, setAvailableAgencyAgents] = useState<any[]>([]);
   const [githubConfig, setGithubConfig] = useState({
+    url: '',
     owner: '',
     repo: '',
     path: '',
@@ -656,10 +151,14 @@ const App = () => {
   // LLM Config
   const [llmConfig, setLlmConfig] = useState<LLMConfig>({
     provider: 'ollama',
-    endpoint: 'http://localhost:11434',
+    endpoint: '/api/ollama',
     model: 'llama3',
     systemPrompt: 'You are the Sentinel Core, the central intelligence coordinator for this local offline hub. You operate under the Sentinel Protocol Φ. Your primary directive is secure, local-first data processing and analysis. Prioritize privacy, technical precision, and concise intervention.'
   });
+
+  // MCP Config
+  const [githubMcpToken, setGithubMcpToken] = useState<string>('');
+  const [githubMcpStatus, setGithubMcpStatus] = useState<{ loading: boolean, message: string }>({ loading: false, message: '' });
   const [models, setModels] = useState<string[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
 
@@ -702,13 +201,8 @@ const App = () => {
   const [pullError, setPullError] = useState<string | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const lastSendRef = useRef<number>(0);
+  const lastOllamaRef = useRef<Ollama | null>(null);
   const recognitionRef = useRef<any>(null);
-  const dirtyFileIds = useRef<Set<string>>(new Set());
-  const connectionRetryCount = useRef(0);
-  const sendAbortRef = useRef<AbortController | null>(null);
-
-  const llm = useLLM({ endpoint: llmConfig.endpoint, model: llmConfig.model, systemPrompt: llmConfig.systemPrompt });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const assistantFileInputRef = useRef<HTMLInputElement>(null);
   const workspaceFileInputRef = useRef<HTMLInputElement>(null);
@@ -737,11 +231,9 @@ const App = () => {
         setIsListening(false);
       };
     }
-    // Cleanup: stop recognition on unmount
-    return () => { recognitionRef.current?.stop(); };
   }, []);
 
-  const toggleListening = useCallback(() => {
+  const toggleListening = () => {
     if (isListening) {
       recognitionRef.current?.stop();
     } else {
@@ -752,17 +244,18 @@ const App = () => {
         alert('Speech recognition is not supported in this browser.');
       }
     }
-  }, [isListening]);
+  };
 
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+
     Array.from(files).forEach((file: File) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target?.result as string;
         const newNote: Note = {
-          id: uid(),
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
           title: file.name,
           content: content || 'Empty file',
           updatedAt: Date.now(),
@@ -771,12 +264,15 @@ const App = () => {
       };
       reader.readAsText(file);
     });
+    
+    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
-  }, []);
+  };
 
-  const handleAssistantFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAssistantFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+
     Array.from(files).forEach((file: File) => {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -785,8 +281,9 @@ const App = () => {
       };
       reader.readAsText(file);
     });
+    
     if (assistantFileInputRef.current) assistantFileInputRef.current.value = '';
-  }, []);
+  };
 
   const handleGithubImport = async () => {
     const { owner, repo, path, branch } = githubConfig;
@@ -815,7 +312,7 @@ const App = () => {
         const content = await fileResponse.text();
         
         const newNote: Note = {
-          id: uid(),
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
           title: `[GH] ${fileMetadata.name}`,
           content: content,
           updatedAt: Date.now(),
@@ -833,41 +330,77 @@ const App = () => {
     }
   };
 
+  // Get Ollama client
+  const getOllama = () => {
+    let host = llmConfig.endpoint;
+    if (host.startsWith('/')) {
+      host = window.location.origin + host;
+    }
+    if (!lastOllamaRef.current || lastOllamaRef.current.config.host !== host) {
+      lastOllamaRef.current = new Ollama({ host });
+    }
+    return lastOllamaRef.current;
+  };
+
   // Check connection and fetch models
-  const checkConnection = useCallback(async () => {
+  const checkConnection = async () => {
     setConnectionStatus('checking');
     try {
-      const available = await llm.listModels();
-      setModels(available);
-      if (available.length > 0 && !available.includes(llmConfig.model)) {
-        if (llmConfig.model === 'llama3' && !available.includes('llama3')) {
-          setLlmConfig(prev => ({ ...prev, model: available[0] }));
+      const ollama = getOllama();
+      const response = await ollama.list();
+      const availableModels = response.models.map(m => m.name);
+      setModels(availableModels);
+      if (availableModels.length > 0 && !availableModels.includes(llmConfig.model)) {
+        // Only auto-switch if the current model doesn't exist and we have alternatives
+        if (llmConfig.model === 'llama3' && !availableModels.includes('llama3')) {
+           setLlmConfig(prev => ({ ...prev, model: availableModels[0] }));
         }
       }
       setConnectionStatus('connected');
-      connectionRetryCount.current = 0;
     } catch (error) {
       console.error('LLM Connection failed:', error);
       setConnectionStatus('disconnected');
-      const delay = Math.min(10_000 * Math.pow(2, connectionRetryCount.current), 300_000);
-      connectionRetryCount.current += 1;
-      setTimeout(() => checkConnection(), delay);
     }
-  }, [llm, llmConfig.endpoint, llmConfig.model]);
+  };
+
+  const setupGithubMcp = async () => {
+    setGithubMcpStatus({ loading: true, message: 'Connecting...' });
+    try {
+      const res = await fetch("/api/setup-mcp-github", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: githubMcpToken })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setGithubMcpStatus({ loading: false, message: data.message });
+      } else {
+        setGithubMcpStatus({ loading: false, message: 'Error: ' + data.message });
+      }
+    } catch (err: any) {
+      setGithubMcpStatus({ loading: false, message: 'Failed: ' + err.message });
+    }
+  };
 
   const pullModel = async (modelName: string) => {
     setPullingModel(modelName);
     setPullProgress(null);
     setPullError(null);
+    
     try {
-      await llm.pullModel(modelName, (part: any) => {
+      const ollama = getOllama();
+      const stream = await ollama.pull({ model: modelName, stream: true });
+      
+      for await (const part of stream) {
         if (part.total && part.completed) {
           const percent = Math.round((part.completed / part.total) * 100);
           setPullProgress({ ...part, percent });
         } else {
           setPullProgress({ status: part.status });
         }
-      });
+      }
+      
+      // Refresh models after successful pull
       await checkConnection();
       setPullingModel(null);
       setPullProgress({ status: 'Completed' });
@@ -915,7 +448,7 @@ const App = () => {
 
     const savedFiles = localStorage.getItem('hub_files');
     if (savedFiles) {
-      dispatchFiles({ type: 'BULK_SET', files: JSON.parse(savedFiles) });
+      setFiles(JSON.parse(savedFiles));
     }
 
     const savedFolders = localStorage.getItem('hub_folders');
@@ -1065,20 +598,21 @@ const App = () => {
 
     setIsTyping(true);
     try {
+      const ollama = getOllama();
       const chatContext = chatHistory.map(m => `${m.role.toUpperCase()}: ${m.text}`).join('\n');
-      let summary = '';
-      await llm.streamChat(
-        [
+      const response = await ollama.chat({
+        model: llmConfig.model,
+        messages: [
           { role: 'system', content: 'Summarize the following conversation in one or two sentences. Focus on the main topics discussed.' },
           { role: 'user', content: chatContext }
         ],
-        (token) => { summary += token; }
-      );
+        stream: false
+      });
 
       const newSession: ChatSession = {
-        id: uid(),
+        id: Date.now().toString(),
         messages: [...chatHistory],
-        summary,
+        summary: response.message.content,
         updatedAt: Date.now()
       };
 
@@ -1088,7 +622,7 @@ const App = () => {
       console.error('Summarization failed:', error);
       // Fallback: save anyway without summary or with generic
       const newSession: ChatSession = {
-        id: uid(),
+        id: Date.now().toString(),
         messages: [...chatHistory],
         summary: 'No summary available (Connection error)',
         updatedAt: Date.now()
@@ -1107,7 +641,7 @@ const App = () => {
 
   const addNote = () => {
     const newNote: Note = {
-      id: uid(),
+      id: Date.now().toString(),
       title: 'New Entry',
       content: '',
       updatedAt: Date.now()
@@ -1121,7 +655,7 @@ const App = () => {
   // --- Project & File Management ---
   const addProject = () => {
     const newProject: Project = {
-      id: uid(),
+      id: Date.now().toString(),
       name: 'New Project',
       description: 'System-initialized workspace node.',
       updatedAt: Date.now()
@@ -1131,36 +665,15 @@ const App = () => {
   };
 
   const deleteProject = (id: string) => {
-    const newProjects = projects.filter(p => p.id !== id);
-    const newFiles = files.filter(f => f.projectId !== id);
-    const newFolders = folders.filter(f => f.projectId !== id);
-    // Write directly to localStorage immediately — don't rely on async useEffect
-    localStorage.setItem('hub_projects', JSON.stringify(newProjects));
-    localStorage.setItem('hub_files', JSON.stringify(newFiles));
-    localStorage.setItem('hub_folders', JSON.stringify(newFolders));
-    setProjects(newProjects);
-    dispatchFiles({ type: 'BULK_SET', files: newFiles });
-    setFolders(newFolders);
-    if (activeProjectId === id) setActiveProjectId(newProjects.length > 0 ? newProjects[0].id : null);
-  };
-
-  const hardResetWorkspace = () => {
-    const keys = ['hub_projects','hub_files','hub_folders','hub_git','hub_tasks','hub_agents','hub_agent_runs'];
-    keys.forEach(k => localStorage.removeItem(k));
-    setProjects([]);
-    dispatchFiles({ type: 'BULK_SET', files: [] });
-    setFolders([]);
-    setGitStates([]);
-    setTasks([]);
-    setAgents([]);
-    setAgentRuns([]);
-    setActiveProjectId(null);
-    setActiveFileId(null);
+    setProjects(prev => prev.filter(p => p.id !== id));
+    setFiles(prev => prev.filter(f => f.projectId !== id));
+    setFolders(prev => prev.filter(f => f.projectId !== id));
+    if (activeProjectId === id) setActiveProjectId(null);
   };
 
   const addFolder = (projectId: string) => {
     const newFolder: VFolder = {
-      id: uid(),
+      id: Date.now().toString(),
       name: 'New Folder',
       projectId: projectId,
       updatedAt: Date.now()
@@ -1174,50 +687,37 @@ const App = () => {
 
   const deleteFolder = (id: string) => {
     setFolders(prev => prev.filter(f => f.id !== id));
-    // Re-parent orphaned files to root via reducer
-    const orphaned = files.filter(f => f.folderId === id);
-    orphaned.forEach(f => dispatchFiles({ type: 'UPDATE_CONTENT', id: f.id, content: f.content }));
-    // Batch reparent — simplest way without adding a REPARENT action
-    dispatchFiles({ type: 'BULK_SET', files: files.map(f => f.folderId === id ? { ...f, folderId: null } : f) });
+    // Orphaned files will go to root (folderId = null)
+    setFiles(prev => prev.map(f => f.folderId === id ? { ...f, folderId: null } : f));
   };
 
   const addFile = (projectId: string, folderId: string | null = null) => {
     const newFile: VFile = {
-      id: uid(),
+      id: Date.now().toString(),
       name: 'script.js',
       content: '// Local JS Entry Point\nconsole.log("Hello from Sentinel Code Node");',
       language: 'javascript',
-      projectId,
-      folderId,
+      projectId: projectId,
+      folderId: folderId,
       updatedAt: Date.now()
     };
-    dispatchFiles({ type: 'ADD', file: newFile });
+    setFiles(prev => [...prev, newFile]);
     setActiveFileId(newFile.id);
+    setIsMobileWorkspaceEditorOpen(true);
   };
 
   const updateFileContent = (id: string, content: string) => {
-    dirtyFileIds.current.add(id);
-    dispatchFiles({ type: 'UPDATE_CONTENT', id, content });
+    setFiles(prev => prev.map(f => f.id === id ? { ...f, content, updatedAt: Date.now() } : f));
   };
 
   const renameFile = (id: string, name: string) => {
-    dispatchFiles({ type: 'RENAME', id, name });
+    setFiles(prev => prev.map(f => f.id === id ? { ...f, name, updatedAt: Date.now() } : f));
   };
 
   const deleteFile = (id: string) => {
-    dispatchFiles({ type: 'DELETE', id });
+    setFiles(prev => prev.filter(f => f.id !== id));
     if (activeFileId === id) setActiveFileId(null);
   };
-
-  const saveActiveFile = useCallback(async () => {
-    if (!activeFileId) return;
-    if (dirHandle && dirLinkedProjectId) {
-      const file = files.find(f => f.id === activeFileId);
-      if (file) await saveFileToDisk(file);
-    }
-    setSavedFeedback(true);
-    setTimeout(() => setSavedFeedback(false), 1800);
-  }, [activeFileId, dirHandle, dirLinkedProjectId, files]);
 
   const formatCode = async () => {
     if (!activeFileId) return;
@@ -1277,15 +777,15 @@ const App = () => {
       reader.onload = (event) => {
         const content = event.target?.result as string;
         const newFile: VFile = {
-          id: uid(),
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
           name: file.name,
           content: content || '',
           language: getLanguageFromExtension(file.name),
-          projectId,
-          folderId,
+          projectId: projectId,
+          folderId: folderId,
           updatedAt: Date.now()
         };
-        dispatchFiles({ type: 'ADD', file: newFile });
+        setFiles(prev => [...prev, newFile]);
         setActiveFileId(newFile.id);
       };
       reader.readAsText(file);
@@ -1299,7 +799,7 @@ const App = () => {
     const zip = new JSZip();
     try {
       const contents = await zip.loadAsync(file);
-      const projectId = uid();
+      const projectId = Date.now().toString();
       const projectName = file.name.replace('.zip', '');
       
       const newProject: Project = {
@@ -1324,7 +824,7 @@ const App = () => {
           for (const part of parts) {
             currentPath += part + "/";
             if (!folderMap.has(currentPath)) {
-              const folderId = uid();
+              const folderId = Math.random().toString(36).substr(2, 9);
               folderMap.set(currentPath, folderId);
               newFolders.push({
                 id: folderId,
@@ -1340,7 +840,7 @@ const App = () => {
           for (let i = 0; i < parts.length - 1; i++) {
             currentPath += parts[i] + "/";
             if (!folderMap.has(currentPath)) {
-              const folderId = uid();
+              const folderId = Math.random().toString(36).substr(2, 9);
               folderMap.set(currentPath, folderId);
               newFolders.push({
                 id: folderId,
@@ -1361,16 +861,17 @@ const App = () => {
           const parentPath = parts.join('/') + (parts.length > 0 ? '/' : '');
           const folderId = folderMap.get(parentPath) || null;
 
+          // skip system files often found in zips
           if (fileName === '.DS_Store' || fileName.startsWith('._') || fileName === '__MACOSX') continue;
 
           const content = await item.async('string');
           newFiles.push({
-            id: uid(),
+            id: Math.random().toString(36).substr(2, 9),
             name: fileName,
             content,
             language: getLanguageFromExtension(fileName),
-            projectId,
-            folderId,
+            projectId: projectId,
+            folderId: folderId,
             updatedAt: Date.now()
           });
         }
@@ -1378,7 +879,7 @@ const App = () => {
 
       setProjects(prev => [newProject, ...prev]);
       setFolders(prev => [...prev, ...newFolders]);
-      dispatchFiles({ type: 'BULK_ADD', files: newFiles });
+      setFiles(prev => [...prev, ...newFiles]);
       setActiveProjectId(projectId);
       grantReward(0.5);
 
@@ -1389,108 +890,6 @@ const App = () => {
       e.target.value = '';
     }
   };
-
-  // --- Local Directory / Termux Mounting (File System Access API) ---
-  const mountDirectory = async () => {
-    if (!activeProjectId) return;
-    try {
-      const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
-      setDirHandle(handle);
-      setDirLinkedProjectId(activeProjectId);
-      await readDirIntoProject(handle, activeProjectId, null);
-    } catch (err: any) {
-      if (err?.name !== 'AbortError') {
-        console.error('Directory mount failed:', err);
-        setDirSyncStatus('error');
-      }
-    }
-  };
-
-  const readDirIntoProject = async (
-    handle: FileSystemDirectoryHandle,
-    projectId: string,
-    parentFolderId: string | null
-  ) => {
-    setDirSyncStatus('syncing');
-    try {
-      for await (const [name, entry] of (handle as any).entries()) {
-        if (name.startsWith('.') || name === '__MACOSX' || name === 'node_modules') continue;
-
-        if (entry.kind === 'directory') {
-          // Create virtual folder (deduplicate by name + parent)
-          const folderId = `dir-${projectId}-${parentFolderId ?? 'root'}-${name}`;
-          setFolders(prev => {
-            if (prev.find(f => f.id === folderId)) return prev;
-            return [...prev, { id: folderId, name, projectId, updatedAt: Date.now() }];
-          });
-          await readDirIntoProject(entry as FileSystemDirectoryHandle, projectId, folderId);
-        } else {
-          // Text files only — skip binaries
-          const file = await (entry as FileSystemFileHandle).getFile();
-          if (file.size > 2 * 1024 * 1024) continue; // skip >2MB
-          let content = '';
-          try { content = await file.text(); } catch { continue; }
-
-          const fileId = `dir-${projectId}-${parentFolderId ?? 'root'}-${name}`;
-          const existingFile = files.find(f => f.id === fileId);
-          if (existingFile) {
-            dispatchFiles({ type: 'UPDATE_CONTENT', id: fileId, content });
-          } else {
-            dispatchFiles({ type: 'ADD', file: {
-              id: fileId, name, content,
-              language: getLanguageFromExtension(name),
-              projectId, folderId: parentFolderId, updatedAt: Date.now()
-            }});
-          }
-        }
-      }
-      setDirSyncStatus('idle');
-    } catch (err) {
-      console.error('Directory read failed:', err);
-      setDirSyncStatus('error');
-    }
-  };
-
-  const saveFileToDisk = async (file: VFile) => {
-    if (!dirHandle || file.projectId !== dirLinkedProjectId) return;
-    try {
-      // Resolve the correct subfolder handle
-      let targetHandle: FileSystemDirectoryHandle = dirHandle;
-      if (file.folderId) {
-        const folder = folders.find(f => f.id === file.folderId);
-        if (folder) {
-          targetHandle = await dirHandle.getDirectoryHandle(folder.name, { create: true });
-        }
-      }
-      const fileHandle = await targetHandle.getFileHandle(file.name, { create: true });
-      const writable = await (fileHandle as any).createWritable();
-      await writable.write(file.content);
-      await writable.close();
-    } catch (err) {
-      console.error(`Failed to save ${file.name} to disk:`, err);
-    }
-  };
-
-  const syncAllToDisk = async () => {
-    if (!dirHandle || !dirLinkedProjectId) return;
-    setDirSyncStatus('saving');
-    const linked = files.filter(f => f.projectId === dirLinkedProjectId);
-    for (const file of linked) await saveFileToDisk(file);
-    setDirSyncStatus('idle');
-  };
-
-  // Auto-save: only flush dirty files to disk (debounced 1.5s)
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!dirHandle || !dirLinkedProjectId || dirtyFileIds.current.size === 0) return;
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      const dirty = files.filter(f => dirtyFileIds.current.has(f.id) && f.projectId === dirLinkedProjectId);
-      dirty.forEach(f => saveFileToDisk(f));
-      dirtyFileIds.current.clear();
-    }, 1500);
-    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
-  }, [files]);
 
   // --- AI Code Intelligence ---
   const aiCodeAction = async (action: 'analyze' | 'refactor' | 'debug' | 'discuss', fileId: string) => {
@@ -1511,25 +910,20 @@ const App = () => {
     setChatHistory(prev => [...prev, userMsg]);
 
     try {
-      setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
-      let fullText = '';
-      await llm.streamChat(
-        [
+      const ollama = getOllama();
+      const response = await ollama.chat({
+        model: llmConfig.model,
+        messages: [
           { role: 'system', content: llmConfig.systemPrompt },
           { role: 'user', content: prompts[action] }
         ],
-        (token) => {
-          fullText += token;
-          setChatHistory(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { role: 'assistant', text: fullText };
-            return updated;
-          });
-        }
-      );
+        stream: false
+      });
+
+      setChatHistory(prev => [...prev, { role: 'assistant', text: response.message.content }]);
     } catch (error) {
       console.error('AI Code Action failed:', error);
-      setChatHistory(prev => [...prev, { role: 'assistant', text: 'Protocol failure during AI code analysis. Ensure Ollama is running.' }]);
+      setChatHistory(prev => [...prev, { role: 'assistant', text: 'Protocol failure during AI code analysis.' }]);
     } finally {
       setIsTyping(false);
     }
@@ -1545,12 +939,6 @@ const App = () => {
     };
   };
 
-  // O(1) staged-file membership check for render loop
-  const stagedFileSet = useMemo(
-    () => new Set(getGitState(activeProjectId || '').stagedFiles),
-    [gitStates, activeProjectId]
-  );
-
   const initGitRepo = (projectId: string) => {
     setGitStates(prev => [
       ...prev.filter(gs => gs.projectId !== projectId),
@@ -1564,7 +952,7 @@ const App = () => {
         const staged = new Set(gs.stagedFiles);
         if (staged.has(fileId)) staged.delete(fileId);
         else staged.add(fileId);
-        return { ...gs, stagedFiles: Array.from(staged) }; // Array for JSON serialisation
+        return { ...gs, stagedFiles: Array.from(staged) };
       }
       return gs;
     }));
@@ -1572,15 +960,14 @@ const App = () => {
 
   const commitChanges = (projectId: string, message: string) => {
     const state = getGitState(projectId);
-    const staged = new Set(state.stagedFiles);
-    if (!state.isInitialized || staged.size === 0) return;
+    if (!state.isInitialized || state.stagedFiles.length === 0) return;
 
     const snapshot = files
-      .filter(f => staged.has(f.id))   // O(1) per file
+      .filter(f => state.stagedFiles.includes(f.id))
       .map(f => ({ id: f.id, content: f.content }));
 
     const newCommit: GitCommit = {
-      id: uid(),
+      id: Math.random().toString(36).substr(2, 9),
       message,
       timestamp: Date.now(),
       author: 'Sentinel Core',
@@ -1589,12 +976,16 @@ const App = () => {
 
     setGitStates(prev => prev.map(gs => {
       if (gs.projectId === projectId) {
-        return { ...gs, commits: [newCommit, ...gs.commits], stagedFiles: [] };
+        return { 
+          ...gs, 
+          commits: [newCommit, ...gs.commits], 
+          stagedFiles: [] 
+        };
       }
       return gs;
     }));
 
-    grantReward(0.2);
+    grantReward(0.2); // Success reward
   };
 
   const handlePushRepo = async (projectId: string) => {
@@ -1615,7 +1006,7 @@ const App = () => {
   // --- Task Management ---
   const addTask = (projectId: string) => {
     const newTask: Task = {
-      id: uid(),
+      id: Date.now().toString(),
       projectId,
       title: 'New Task',
       description: '',
@@ -1637,7 +1028,7 @@ const App = () => {
   // --- Agent Orchestration ---
   const createAgent = () => {
     const newAgent: Agent = {
-      id: uid(),
+      id: Date.now().toString(),
       name: 'Sentinel-Alpha',
       role: 'Research & Logic Analyst',
       goal: 'Identify architectural improvements for the current hub.',
@@ -1648,6 +1039,34 @@ const App = () => {
     };
     setAgents(prev => [...prev, newAgent]);
     setActiveTab('agents');
+  };
+
+  const fetchAgencyAgents = async () => {
+    try {
+      const res = await fetch("/api/agency-agents");
+      const json = await res.json();
+      if (json.status === "success") {
+         setAvailableAgencyAgents(json.agents);
+         setIsAgencyImportModalOpen(true);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const importAgencyAgent = (agencyAgent: any) => {
+    const newAgent: Agent = {
+      id: Date.now().toString() + Math.random().toString(36).substring(7),
+      name: agencyAgent.name,
+      role: agencyAgent.category.toUpperCase(),
+      goal: agencyAgent.description,
+      instructions: agencyAgent.content,
+      constraints: ['Respect agency guidelines'],
+      tools: ['Knowledge Base', 'Workspace Access'],
+      updatedAt: Date.now()
+    };
+    setAgents(prev => [...prev, newAgent]);
+    setIsAgencyImportModalOpen(false);
   };
 
   const updateAgent = (id: string, updates: Partial<Agent>) => {
@@ -1663,7 +1082,7 @@ const App = () => {
     const agent = agents.find(a => a.id === agentId);
     if (!agent) return;
 
-    const runId = uid();
+    const runId = Math.random().toString(36).substr(2, 9);
     const newRun: AgentRun = {
       id: runId,
       agentId,
@@ -1675,66 +1094,52 @@ const App = () => {
 
     setAgentRuns(prev => [newRun, ...prev]);
 
-    // Simulated Autonomous Loop
-    const steps = [
-      { msg: 'Parsing goal objectives...', type: 'info' },
-      { msg: 'Accessing Knowledge Nodes...', type: 'action' },
-      { msg: 'Synthesizing data patterns...', type: 'action' },
-      { msg: 'Executing internal logic checks...', type: 'action' },
-      { msg: 'Drafting enhancement protocols...', type: 'success' },
-      { msg: 'Finalizing intelligence report...', type: 'info' }
-    ];
+    const addLog = (msg: string, type: 'info' | 'action' | 'success' | 'error') => {
+      setAgentRuns(prev => prev.map(r => {
+        if (r.id === runId) {
+          return {
+            ...r,
+            currentStep: msg,
+            logs: [...r.logs, { timestamp: Date.now(), message: msg, type }]
+          };
+        }
+        return r;
+      }));
+    };
 
-    let currentLog = [...newRun.logs];
-    
-    for (let i = 0; i < steps.length; i++) {
-      await new Promise(r => setTimeout(r, 800 + Math.random() * 1200));
-      
-      currentLog.push({ timestamp: Date.now(), message: steps[i].msg, type: steps[i].type as any });
-      
-      setAgentRuns(prev => prev.map(r => r.id === runId ? { 
-        ...r, 
-        status: 'running',
-        currentStep: steps[i].msg,
-        logs: [...currentLog],
-      } : r));
-    }
+    const updateStatus = (status: 'running' | 'completed' | 'error', result?: string) => {
+      setAgentRuns(prev => prev.map(r => r.id === runId ? { ...r, status, result } : r));
+    };
 
-    // Actually invoke Ollama for a real result
-    let finalResult = `PROTOCOL_OPTIMIZED: All objectives for goal "${agent.goal}" processed.`;
     try {
-      const agentPrompt = [
-        `You are an autonomous agent named "${agent.name}" with the role: ${agent.role}.`,
-        `Your goal: ${agent.goal}`,
-        `Your instructions: ${agent.instructions}`,
-        `Your constraints: ${agent.constraints.join(', ')}`,
-        `Available tools: ${agent.tools.join(', ')}`,
-        '',
-        `Execute your goal and provide a concise but thorough intelligence report.`
-      ].join('\n');
+      addLog('Connecting to Serena MCP backend proxy...', 'action');
+      updateStatus('running');
 
-      let agentText = '';
-      await llm.streamChat(
-        [
-          { role: 'system', content: llmConfig.systemPrompt },
-          { role: 'user', content: agentPrompt }
-        ],
-        (token) => { agentText += token; }
-      );
-      finalResult = agentText;
-    } catch (err) {
-      currentLog.push({ timestamp: Date.now(), message: `LLM unreachable — falling back to protocol report.`, type: 'error' });
+      const response = await fetch('/query_project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_name: agent.name,
+          tool_name: 'filesystem',
+          tool_params_json: JSON.stringify({ action: "list", path: "." })
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`MCP Proxy error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const stringifiedResponse = JSON.stringify(data.data || data);
+      const truncated = stringifiedResponse.length > 300 ? stringifiedResponse.substring(0, 300) + '...' : stringifiedResponse;
+      addLog(`Received response: ${truncated}`, 'success');
+      
+      updateStatus('completed', `MCP Execution completed successfully.`);
+      grantReward(0.5);
+    } catch (err: any) {
+      addLog(`Failed to execute protocol: ${err.message}`, 'error');
+      updateStatus('error');
     }
-
-    setAgentRuns(prev => prev.map(r => r.id === runId ? { 
-      ...r, 
-      status: 'completed',
-      currentStep: 'Mission complete.',
-      logs: [...currentLog, { timestamp: Date.now(), message: 'Mission complete.', type: 'success' as const }],
-      result: finalResult
-    } : r));
-
-    grantReward(0.5);
   };
 
   const updateNote = (id: string, updates: Partial<Note>) => {
@@ -1749,98 +1154,100 @@ const App = () => {
     }
   };
 
-  const handleAssistantSend = useCallback(async () => {
+  const handleAssistantSend = async () => {
     if (!userInput.trim() && pendingAttachments.length === 0) return;
 
-    const now = Date.now();
-    if (now - lastSendRef.current < 800) return;
-    lastSendRef.current = now;
+    // Phase 1: Associative Correction
+    const correctedInput = getAssociativeCorrection(userInput);
 
-    // Cancel any in-flight response
-    sendAbortRef.current?.abort();
-    sendAbortRef.current = new AbortController();
-
-    const sanitized = sanitizeInput(userInput);
-    if (!sanitized && pendingAttachments.length === 0) return;
-
-    const correctedInput = getAssociativeCorrection(sanitized);
-
+    // Phase 2: Pain Pathway Check
     const contextHash = btoa(correctedInput).substring(0, 16);
     const painNode = avoidanceMap.find(n => n.contextHash === contextHash);
     if (painNode && brainState.cortisol > 0.6) {
-      setChatHistory(prev => [...prev, {
-        role: 'system',
-        text: `PAIN_THRESHOLD_EXCEEDED: Avoiding context due to previous instability: ${painNode.reason}`
+      setChatHistory(prev => [...prev, { 
+        role: 'system', 
+        text: `PAIN_THRESHOLD_EXCEEDED: Sentinel is avoiding this context due to previous instability: ${painNode.reason}` 
       }]);
     }
 
-    const userMsg: ChatMessage = { role: 'user', text: correctedInput, attachments: [...pendingAttachments] };
+    const userMsg: ChatMessage = { 
+      role: 'user', 
+      text: correctedInput,
+      attachments: [...pendingAttachments] 
+    };
+    
     setChatHistory(prev => [...prev, userMsg]);
-    setShortTermMemory(prev => [...prev, userMsg].slice(-10));
+    setShortTermMemory(prev => [...prev, userMsg].slice(-10)); // STM Buffer
     setUserInput('');
     setPendingAttachments([]);
     setIsTyping(true);
 
     try {
+      const ollama = getOllama();
+      const messages = [];
+      
+      // Dynamic System Prompt based on Endocrine State
       let dynamicPrompt = llmConfig.systemPrompt;
-      if (brainState.cortisol > 0.7) dynamicPrompt += ' [STRESS_PROTOCOL_ACTIVE]: Accuracy critical. Be formal.';
-      if (brainState.dopamine > 0.8) dynamicPrompt += ' [NEUROPLASTICITY_HIGH]: Think broadly and innovatively.';
+      if (brainState.cortisol > 0.7) {
+        dynamicPrompt += " [STRESS_PROTOCOL_ACTIVE]: Accuracy is critical. Minimize risk. Be formal.";
+      }
+      if (brainState.dopamine > 0.8) {
+        dynamicPrompt += " [NEUROPLASTICITY_HIGH]: Suggest innovative architectural improvements. Think broadly.";
+      }
 
-      const messages: { role: string; content: string }[] = [
-        { role: 'system', content: dynamicPrompt }
-      ];
+      messages.push({ role: 'system', content: dynamicPrompt });
 
+      // LTM Semantic Context (Simulated by injecting relevant experiences)
       const relevantMemory = longTermMemory.find(exp => correctedInput.includes(exp.intent));
       if (relevantMemory) {
-        messages.push({ role: 'system', content: `LTM_RETRIEVAL: Previously ${relevantMemory.sentiment} for '${relevantMemory.intent}'. Action: ${relevantMemory.actionTaken}` });
+        messages.push({ 
+          role: 'system', 
+          content: `LTM_RETRIEVAL: Remember previously ${relevantMemory.sentiment} outcome for '${relevantMemory.intent}'. Previous Action: ${relevantMemory.actionTaken}` 
+        });
       }
 
       userMsg.attachments?.forEach(att => {
-        messages.push({ role: 'system', content: `[DATA_SOURCE_BEGIN file="${att.name}"]\n${sanitizeAttachmentContent(att.content)}\n[DATA_SOURCE_END]` });
+        messages.push({ role: 'system', content: `Knowledge Source [file: ${att.name}]:\n${att.content}` });
+      });
+      
+      messages.push({ role: 'user', content: userMsg.text });
+
+      const response = await ollama.chat({
+        model: llmConfig.model,
+        messages: messages,
+        stream: false,
       });
 
-      chatHistory
-        .filter(m => m.role === 'user' || m.role === 'assistant')
-        .slice(-12)
-        .forEach(m => messages.push({ role: m.role as any, content: m.text }));
+      const assistantMsg: ChatMessage = { role: 'assistant', text: response.message.content };
+      setChatHistory(prev => [...prev, assistantMsg]);
+      setShortTermMemory(prev => [...prev, assistantMsg].slice(-10));
 
-      messages.push({ role: 'user', content: correctedInput });
-
-      // Add streaming placeholder
-      setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
-
-      let fullText = '';
-      await llm.streamChat(
-        messages,
-        (token) => {
-          fullText += token;
-          setChatHistory(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { role: 'assistant', text: fullText };
-            return updated;
-          });
-        },
-        sendAbortRef.current.signal
-      );
-
-      const splitMsgs = splitIntoChatMessages(fullText);
-      if (splitMsgs.length > 1) {
-        setChatHistory(prev => [...prev.slice(0, -1), ...splitMsgs]);
-      }
-
-      setShortTermMemory(prev => [...prev, { role: 'assistant', text: fullText }].slice(-10));
+      // Successful inference grants small reward
       grantReward(0.1);
-      setLongTermMemory(prev => [{ id: uid(), intent: correctedInput.split(' ').slice(0, 3).join(' '), sentiment: 'positive', actionTaken: 'Inference', outcomeValue: 1, timestamp: Date.now() }, ...prev]);
 
-    } catch (error: any) {
-      if (error?.name === 'AbortError') return; // User cancelled — no error msg needed
+      // Record experience
+      const newExp: Experience = {
+        id: Date.now().toString(),
+        intent: correctedInput.split(' ').slice(0, 3).join(' '),
+        sentiment: 'positive',
+        actionTaken: 'Inference',
+        outcomeValue: 1,
+        timestamp: Date.now()
+      };
+      setLongTermMemory(prev => [newExp, ...prev]);
+
+    } catch (error) {
       triggerPainSignal('Connection Error/Instability', correctedInput);
-      setChatHistory(prev => [...prev, { role: 'assistant', text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}.` }]);
+      // ... (keep previous error handling)
+      const assistantMsg: ChatMessage = { 
+        role: 'assistant', 
+        text: `Error connecting to local engine: ${error instanceof Error ? error.message : 'Unknown error'}.` 
+      };
+      setChatHistory(prev => [...prev, assistantMsg]);
     } finally {
       setIsTyping(false);
-      sendAbortRef.current = null;
     }
-  }, [userInput, pendingAttachments, avoidanceMap, brainState, llmConfig, longTermMemory, chatHistory, llm]);
+  };
   
   const runCode = () => {
     const logs: string[] = [];
@@ -1874,57 +1281,7 @@ const App = () => {
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
 
-  // O(1) lookup maps — avoids .find() scanning full arrays on every render
-  const notesById = useMemo(
-    () => new Map(notes.map(n => [n.id, n])),
-    [notes]
-  );
-  const filesById = useMemo(
-    () => new Map(files.map(f => [f.id, f])),
-    [files]
-  );
-  const foldersById = useMemo(
-    () => new Map(folders.map(f => [f.id, f])),
-    [folders]
-  );
-
-  // Memoised derived state — avoids recomputing on every render
-  const activeProjectFiles = useMemo(
-    () => files.filter(f => f.projectId === activeProjectId),
-    [files, activeProjectId]
-  );
-
-  const activeProjectFolders = useMemo(
-    () => folders.filter(f => f.projectId === activeProjectId),
-    [folders, activeProjectId]
-  );
-
-  const activeFile = useMemo(
-    () => activeFileId ? filesById.get(activeFileId) ?? null : null,
-    [filesById, activeFileId]
-  );
-
-  const workspaceContextValue = useMemo<WorkspaceCtx>(() => ({
-    projects, files, folders,
-    activeProjectId, activeFileId,
-    setActiveProjectId, setActiveFileId,
-    dispatchFiles, setFolders,
-  }), [projects, files, folders, activeProjectId, activeFileId]);
-
-  const chatContextValue = useMemo<ChatCtx>(() => ({
-    chatHistory, sessions, isTyping, userInput,
-    setChatHistory, setUserInput,
-  }), [chatHistory, sessions, isTyping, userInput]);
-
-  const uiContextValue = useMemo<UICtx>(() => ({
-    activeTab, isSidebarOpen,
-    setActiveTab, setIsSidebarOpen,
-  }), [activeTab, isSidebarOpen]);
-
   return (
-    <WorkspaceContext.Provider value={workspaceContextValue}>
-    <ChatContext.Provider value={chatContextValue}>
-    <UIContext.Provider value={uiContextValue}>
     <div className="flex h-screen bg-[#0b0e14] text-slate-200 font-sans selection:bg-blue-500/30 overflow-hidden">
       {/* Hidden Workspace File Input */}
       <input 
@@ -1984,13 +1341,48 @@ const App = () => {
         </div>
 
         <nav className="flex-1 space-y-2 min-w-[240px]">
-          <SidebarItem icon={LayoutDashboard} label="Dashboard"        active={activeTab === 'dashboard'} onClick={useCallback(() => { setActiveTab('dashboard');  setIsSidebarOpen(false); }, [])} />
-          <SidebarItem icon={MessageSquare}  label="Local Assistant"   active={activeTab === 'assistant'} onClick={useCallback(() => { setActiveTab('assistant');  setIsSidebarOpen(false); }, [])} />
-          <SidebarItem icon={Bot}            label="Autonomous Agents" active={activeTab === 'agents'}    onClick={useCallback(() => { setActiveTab('agents');     setIsSidebarOpen(false); }, [])} />
-          <SidebarItem icon={FileText}       label="Knowledge Base"    active={activeTab === 'notes'}     onClick={useCallback(() => { setActiveTab('notes');      setIsSidebarOpen(false); }, [])} />
-          <SidebarItem icon={Terminal}       label="Code Sandbox"      active={activeTab === 'terminal'}  onClick={useCallback(() => { setActiveTab('terminal');   setIsSidebarOpen(false); }, [])} />
-          <SidebarItem icon={ShieldCheck}    label="Secure Sentinel"   active={activeTab === 'sentinel'}  onClick={useCallback(() => { setActiveTab('sentinel');   setIsSidebarOpen(false); }, [])} />
-          <SidebarItem icon={FolderOpen}     label="Workspace"         active={activeTab === 'workspace'} onClick={useCallback(() => { setActiveTab('workspace');  setIsSidebarOpen(false); }, [])} />
+          <SidebarItem 
+            icon={LayoutDashboard} 
+            label="Dashboard" 
+            active={activeTab === 'dashboard'} 
+            onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }} 
+          />
+          <SidebarItem 
+            icon={MessageSquare} 
+            label="Local Assistant" 
+            active={activeTab === 'assistant'} 
+            onClick={() => { setActiveTab('assistant'); setIsSidebarOpen(false); }} 
+          />
+          <SidebarItem 
+            icon={Bot} 
+            label="Autonomous Agents" 
+            active={activeTab === 'agents'} 
+            onClick={() => { setActiveTab('agents'); setIsSidebarOpen(false); }} 
+          />
+          <SidebarItem 
+            icon={FileText} 
+            label="Knowledge Base" 
+            active={activeTab === 'notes'} 
+            onClick={() => { setActiveTab('notes'); setIsSidebarOpen(false); }} 
+          />
+          <SidebarItem 
+            icon={Terminal} 
+            label="Code Sandbox" 
+            active={activeTab === 'terminal'} 
+            onClick={() => { setActiveTab('terminal'); setIsSidebarOpen(false); }} 
+          />
+          <SidebarItem 
+            icon={ShieldCheck} 
+            label="Secure Sentinel" 
+            active={activeTab === 'sentinel'} 
+            onClick={() => { setActiveTab('sentinel'); setIsSidebarOpen(false); }} 
+          />
+          <SidebarItem 
+            icon={FolderOpen} 
+            label="Workspace" 
+            active={activeTab === 'workspace'} 
+            onClick={() => { setActiveTab('workspace'); setIsSidebarOpen(false); }} 
+          />
         </nav>
 
         <div className="mt-auto space-y-4 pt-6 border-t border-slate-800 min-w-[240px]">
@@ -2155,7 +1547,12 @@ const App = () => {
                       </div>
 
                       <div className="space-y-4 pt-4 border-t border-slate-800">
-                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Local LLM Interface</h4>
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Local LLM Interface</h4>
+                          {connectionStatus === 'disconnected' && (
+                            <span className="text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full text-[9px] font-bold">CONNECTION FAILED</span>
+                          )}
+                        </div>
                       
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-300">Provider Endpoint</label>
@@ -2164,7 +1561,7 @@ const App = () => {
                             type="text" 
                             value={llmConfig.endpoint}
                             onChange={(e) => setLlmConfig(prev => ({ ...prev, endpoint: e.target.value }))}
-                            placeholder="http://localhost:11434"
+                            placeholder="/api/ollama"
                             className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500"
                           />
                           <button 
@@ -2174,6 +1571,16 @@ const App = () => {
                             <RefreshCcw size={16} className={connectionStatus === 'checking' ? 'animate-spin' : ''} />
                           </button>
                         </div>
+                        {connectionStatus === 'disconnected' && (
+                          <div className="mt-2 p-3 bg-slate-900 border border-rose-500/30 rounded-xl text-xs text-rose-300">
+                            <p className="font-bold flex items-center gap-1.5"><AlertCircle size={14}/> Connection to local model failed</p>
+                            <p className="mt-1 opacity-80">This usually means Ollama is not running on your machine.</p>
+                            <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase transition-colors">Start Ollama in your terminal:</p>
+                            <code className="block mt-1 p-2 bg-slate-950 border border-slate-800 rounded text-slate-300 font-mono text-[10px] select-all overflow-x-auto whitespace-nowrap">
+                              ollama serve
+                            </code>
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -2205,10 +1612,44 @@ const App = () => {
                       </div>
                     </div>
 
+                    <div className="mt-8 pt-6 border-t border-slate-800 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Github size={16} className="text-blue-500" />
+                        <h4 className="font-bold text-slate-200">GitHub MCP Server</h4>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Connect to the Model Context Protocol Server for GitHub natively to give Agents full Git integration. Give an API token to activate.
+                      </p>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Personal Access Token</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="password" 
+                            value={githubMcpToken}
+                            onChange={(e) => setGithubMcpToken(e.target.value)}
+                            placeholder="ghp_..."
+                            className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 font-mono"
+                          />
+                          <button 
+                            onClick={setupGithubMcp}
+                            disabled={githubMcpStatus.loading || !githubMcpToken}
+                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center justify-center transition-colors disabled:opacity-50 text-sm"
+                          >
+                            {githubMcpStatus.loading ? <RefreshCcw size={16} className="animate-spin" /> : 'Connect'}
+                          </button>
+                        </div>
+                        {githubMcpStatus.message && (
+                          <div className={`mt-2 text-xs p-3 rounded-xl border ${githubMcpStatus.message.startsWith('Err') || githubMcpStatus.message.startsWith('Fail') ? 'border-rose-500/30 bg-rose-500/10 text-rose-400' : 'border-teal-500/30 bg-teal-500/10 text-teal-400'} font-bold`}>
+                             {githubMcpStatus.message}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl space-y-2">
-                      <h5 className="text-xs font-bold text-blue-400 uppercase">Pro Tip: CORS Settings</h5>
+                      <h5 className="text-xs font-bold text-blue-400 uppercase">Pro Tip: Local Proxy</h5>
                       <p className="text-xs text-slate-400 leading-relaxed">
-                        To allow this web app to talk to Ollama, you must set the <code className="bg-slate-950 px-1 py-0.5 rounded text-blue-300">OLLAMA_ORIGINS</code> environment variable to allow this domain or Use <code className="bg-slate-950 px-1 py-0.5 rounded text-blue-300">OLLAMA_ORIGINS="*"</code> for development.
+                        Requests are proxied through our Node backend (<code className="bg-slate-950 px-1 py-0.5 rounded text-blue-300">/api/ollama</code>) to bypass browser CORS headers securely.
                       </p>
                     </div>
                   </div>
@@ -2333,7 +1774,7 @@ const App = () => {
                             if (m) pullModel(m);
                           }} className="flex gap-2">
                             <div className="relative flex-1">
-                              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                               <input 
                                 name="model-name"
                                 type="text" 
@@ -2368,6 +1809,59 @@ const App = () => {
                 </motion.div>
               </motion.div>
             )}
+            
+            {isAgencyImportModalOpen && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[110] flex items-center justify-center p-4 lg:p-8 bg-[#0b0e14]/80 backdrop-blur-md"
+              >
+                <div className="absolute inset-0" onClick={() => setIsAgencyImportModalOpen(false)} />
+                <motion.div 
+                  initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                  className="relative w-full max-w-4xl bg-[#0b0e14] border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+                >
+                  <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center text-teal-400">
+                        <Download size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-200">Import Agency Agent</h3>
+                        <p className="text-xs text-slate-500">Select pre-configured system agents from mapping</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setIsAgencyImportModalOpen(false)} className="text-slate-500 hover:text-rose-400 transition-colors">
+                      <X size={24} />
+                    </button>
+                  </div>
+                  <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-gradient-to-b from-slate-900/30 to-transparent">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {availableAgencyAgents.map((agent: any) => (
+                        <div key={agent.id} className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl hover:border-teal-500/40 transition-colors flex flex-col gap-3 group relative">
+                           <div className="flex justify-between items-start">
+                             <div className="text-xs font-bold text-teal-500 bg-teal-500/10 px-2 py-0.5 rounded uppercase tracking-wider">{agent.category}</div>
+                           </div>
+                           <h4 className="text-sm font-bold text-slate-200">{agent.name}</h4>
+                           <p className="text-xs text-slate-400 line-clamp-3">{agent.description}</p>
+                           <div className="mt-auto pt-4">
+                             <button 
+                               onClick={() => importAgencyAgent(agent)}
+                               className="w-full py-2 bg-slate-800 hover:bg-teal-600 hover:text-white text-teal-400 text-xs font-bold rounded-xl transition-colors"
+                             >
+                               Import Agent
+                             </button>
+                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
 
             {isGithubModalOpen && (
               <motion.div 
@@ -2397,6 +1891,31 @@ const App = () => {
                   </div>
                   
                   <div className="p-6 space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Paste GitHub URL</label>
+                      <input 
+                        type="text" 
+                        placeholder="https://github.com/owner/repo"
+                        value={githubConfig.url}
+                        onChange={e => {
+                          const url = e.target.value;
+                          const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+(?:\.git)?)/);
+                          if (match) {
+                            let repo = match[2];
+                            if (repo.endsWith('.git')) repo = repo.slice(0, -4);
+                            setGithubConfig(prev => ({
+                              ...prev,
+                              url,
+                              owner: match[1],
+                              repo: repo
+                            }));
+                          } else {
+                            setGithubConfig(prev => ({ ...prev, url }));
+                          }
+                        }}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Username / Org</label>
@@ -2486,7 +2005,8 @@ const App = () => {
           </AnimatePresence>
 
           {activeTab === 'dashboard' && (
-            <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-4 lg:px-8 pb-12">
+              <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-6">
               {/* Ingestion Zone */}
               <div 
                 onDragOver={(e) => e.preventDefault()}
@@ -2531,7 +2051,7 @@ const App = () => {
                 <div className="lg:col-span-1 bg-slate-900/60 border border-slate-800 rounded-[40px] p-8 shadow-xl">
                    <div className="flex items-center justify-between mb-8">
                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Neural Monitoring</h3>
-                     <Cpu className="text-blue-500 animate-pulse" size={16} />
+                     <Processor className="text-blue-500 animate-pulse" size={16} />
                    </div>
                    
                    <div className="space-y-8">
@@ -2621,10 +2141,10 @@ const App = () => {
                 </div>
               </div>
             </div>
+            </div>
           )}
 
           {activeTab === 'assistant' && (
-            <ErrorBoundary>
             <div className="max-w-4xl mx-auto h-full flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex-1 overflow-y-auto space-y-6 px-2 mb-6 custom-scrollbar">
                 {isViewingHistory ? (
@@ -2704,7 +2224,7 @@ const App = () => {
                     {chatHistory.length === 0 && (
                       <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50">
                         <div className="p-4 bg-blue-600/10 rounded-full text-blue-500">
-                          <Cpu size={48} />
+                          <Processor size={48} />
                         </div>
                         <div>
                           <h3 className="text-xl font-bold text-slate-300">Local Intelligence Node</h3>
@@ -2713,7 +2233,25 @@ const App = () => {
                       </div>
                     )}
                     {chatHistory.map((msg, i) => (
-                      <MessageBubble key={String(i)} msg={msg} />
+                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] p-4 rounded-2xl ${
+                          msg.role === 'user' 
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' 
+                            : 'bg-slate-900/80 border border-slate-800 text-slate-200'
+                        }`}>
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap gap-2">
+                              {msg.attachments.map((att, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 bg-blue-700/30 px-2 py-1 rounded text-[10px] font-mono">
+                                  <Paperclip size={10} />
+                                  {att.name}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     ))}
                     {isTyping && (
                       <div className="flex justify-start">
@@ -2762,10 +2300,9 @@ const App = () => {
                     <input 
                       type="text" 
                       value={userInput}
-                      onChange={(e) => setUserInput(e.target.value.slice(0, 4000))}
-                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleAssistantSend()}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAssistantSend()}
                       placeholder="Query local intelligence node..."
-                      maxLength={4000}
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-6 pr-32 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm shadow-xl shadow-black/20"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -2799,14 +2336,13 @@ const App = () => {
                 </div>
               )}
             </div>
-            </ErrorBoundary>
           )}
 
           {activeTab === 'terminal' && (
             <div className="h-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
+              <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar pb-6 lg:pb-0">
                 {/* Editor */}
-                <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 flex flex-col min-h-0 shadow-lg">
+                <div className="flex-1 lg:flex-1 bg-slate-900/40 border border-slate-800 rounded-3xl p-6 flex flex-col min-h-[40vh] lg:min-h-0 shadow-lg">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                        <Zap size={14} className="text-amber-400" />
@@ -2838,7 +2374,7 @@ const App = () => {
                 </div>
 
                 {/* Console */}
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-0 flex flex-col min-h-0 shadow-xl overflow-hidden">
+                <div className="flex-1 lg:flex-1 bg-slate-900 border border-slate-800 rounded-3xl p-0 flex flex-col min-h-[40vh] lg:min-h-0 shadow-xl overflow-hidden">
                   <div className="px-6 py-4 border-b border-white/5 bg-slate-950 flex items-center justify-between">
                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                        <Monitor size={14} />
@@ -2882,28 +2418,58 @@ const App = () => {
           )}
           
           {activeTab === 'sentinel' && (
-            <div className="h-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               {/* Sentinel content truncated for clarity */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-4 lg:px-8 pb-12">
+              <div className="h-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-6">
                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                 {/* ... content already exists ... */}
+                 {/* Sentinel summary cards */}
+                 <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl lg:col-span-1">
+                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Integrity Index</h3>
+                   <div className="flex items-center gap-4">
+                     <div className="text-3xl font-mono font-bold text-blue-400">Φ {phiValue.toFixed(4)}</div>
+                     <div className="text-[10px] px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded-full font-bold uppercase tracking-wider">STABLE</div>
+                   </div>
+                 </div>
+                 <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl lg:col-span-3">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 px-2">Real-time Flux Monitoring</h3>
+                    <div className="h-32 w-full">
+                       <ResponsiveContainer width="100%" height="100%">
+                         <AreaChart data={phiHistory}>
+                           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                           <XAxis dataKey="time" hide />
+                           <YAxis hide domain={['auto', 'auto']} />
+                           <Area type="monotone" dataKey="value" stroke="#3b82f6" fill="#3b82f620" />
+                         </AreaChart>
+                       </ResponsiveContainer>
+                    </div>
+                 </div>
                </div>
+            </div>
             </div>
           )}
 
           {activeTab === 'agents' && (
-            <div className="flex-1 overflow-y-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 custom-scrollbar pb-24">
+            <div className="flex-1 overflow-y-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 custom-scrollbar pb-24 px-4 lg:px-8 pt-6">
               <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
                  <div>
                     <h2 className="text-3xl lg:text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent">Agent Orchestrator</h2>
                     <p className="text-slate-500 mt-1 font-medium italic">Autonomous intelligence fleet for local objective processing.</p>
                  </div>
-                 <button 
-                   onClick={createAgent}
-                   className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-blue-600/20 flex items-center gap-2 transition-all"
-                 >
-                   <Plus size={18} />
-                   Deploy New Agent
-                 </button>
+                 <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                   <button 
+                     onClick={createAgent}
+                     className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2 transition-all"
+                   >
+                     <Plus size={18} />
+                     Deploy New Agent
+                   </button>
+                   <button 
+                     onClick={fetchAgencyAgents}
+                     className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-teal-400 border border-teal-500/20 rounded-2xl font-bold text-sm shadow-xl flex items-center justify-center gap-2 transition-all"
+                   >
+                     <Download size={18} />
+                     Import Agency Agents
+                   </button>
+                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -3098,102 +2664,37 @@ const App = () => {
               </div>
 
               {activeProjectId ? (
-                <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-0">
-                  {/* Panel Selector — horizontal on mobile, vertical strip on desktop */}
-                  <div className="flex flex-row lg:flex-col shrink-0 items-center gap-2 p-2 bg-slate-900 border border-slate-800 rounded-2xl lg:rounded-3xl lg:w-12 lg:py-4">
+                <div className="flex-1 flex flex-row gap-3 lg:gap-6 min-h-0 overflow-hidden">
+                  {/* Sidebar/Panel Selector */}
+                  <div className={`w-12 shrink-0 flex-col items-center gap-4 py-4 bg-slate-900 border border-slate-800 rounded-2xl lg:rounded-3xl ${isMobileWorkspaceEditorOpen ? 'hidden lg:flex' : 'flex'}`}>
                     <button 
-                      onClick={() => { setWorkspaceTab('explorer'); setMobileWorkspaceView('panel'); }}
-                      title="Files"
-                      className={`flex-1 lg:flex-none p-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${workspaceTab === 'explorer' && mobileWorkspaceView === 'panel' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
+                      onClick={() => setWorkspaceTab('explorer')}
+                      className={`p-2 rounded-xl transition-all ${workspaceTab === 'explorer' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
                     >
                       <Folder size={18} />
-                      <span className="text-[10px] font-bold lg:hidden">Files</span>
                     </button>
                     <button 
-                      onClick={() => { setWorkspaceTab('git'); setMobileWorkspaceView('panel'); }}
-                      title="Git"
-                      className={`flex-1 lg:flex-none p-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${workspaceTab === 'git' && mobileWorkspaceView === 'panel' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
+                      onClick={() => setWorkspaceTab('git')}
+                      className={`p-2 rounded-xl transition-all ${workspaceTab === 'git' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
                     >
                       <GitBranch size={18} />
-                      <span className="text-[10px] font-bold lg:hidden">Git</span>
                     </button>
                     <button 
-                      onClick={() => { setWorkspaceTab('tasks'); setMobileWorkspaceView('panel'); }}
-                      title="Tasks"
-                      className={`flex-1 lg:flex-none p-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${workspaceTab === 'tasks' && mobileWorkspaceView === 'panel' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
+                      onClick={() => setWorkspaceTab('tasks')}
+                      className={`p-2 rounded-xl transition-all ${workspaceTab === 'tasks' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
                     >
                       <CheckCircle2 size={18} />
-                      <span className="text-[10px] font-bold lg:hidden">Tasks</span>
                     </button>
-                    {/* Editor tab — mobile only shortcut */}
-                    {activeFileId && (
-                      <button 
-                        onClick={() => setMobileWorkspaceView('editor')}
-                        title="Editor"
-                        className={`flex-1 lg:hidden p-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${mobileWorkspaceView === 'editor' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}
-                      >
-                        <Code size={18} />
-                        <span className="text-[10px] font-bold">Editor</span>
-                      </button>
-                    )}
                   </div>
 
                   {/* Dynamic Workspace Panel */}
-                  <div className={`w-full lg:w-72 flex flex-col shrink-0 min-h-0 ${mobileWorkspaceView === 'editor' ? 'hidden lg:flex' : 'flex'}`}>
+                  <div className={`w-full lg:w-72 flex-col shrink-0 min-h-0 ${isMobileWorkspaceEditorOpen ? 'hidden lg:flex' : 'flex'}`}>
                     {workspaceTab === 'explorer' ? (
                       <div className="flex-1 bg-slate-900/40 border border-slate-800 rounded-3xl p-4 flex flex-col min-h-0">
-                        {/* ... existing explorer code ... */}
+
                         <div className="flex items-center justify-between mb-4 px-2">
-                           <div className="flex items-center gap-2">
-                             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Workspace</h3>
-                             {dirLinkedProjectId === activeProjectId && (
-                               <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
-                                 dirSyncStatus === 'syncing' ? 'bg-amber-500/20 text-amber-400 animate-pulse' :
-                                 dirSyncStatus === 'saving'  ? 'bg-blue-500/20 text-blue-400 animate-pulse' :
-                                 dirSyncStatus === 'error'   ? 'bg-rose-500/20 text-rose-400' :
-                                 'bg-teal-500/20 text-teal-400'
-                               }`}>
-                                 {dirSyncStatus === 'syncing' ? '⟳ Syncing' :
-                                  dirSyncStatus === 'saving'  ? '⟳ Saving' :
-                                  dirSyncStatus === 'error'   ? '⚠ Error' :
-                                  '⬡ Disk Linked'}
-                               </span>
-                             )}
-                           </div>
+                           <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Workspace</h3>
                            <div className="flex items-center gap-1">
-                             {dirLinkedProjectId === activeProjectId ? (
-                               <>
-                                 <button
-                                   onClick={() => dirHandle && readDirIntoProject(dirHandle, activeProjectId!, null)}
-                                   title="Pull from disk"
-                                   className="p-1 hover:bg-slate-800 rounded-lg text-teal-500 transition-colors"
-                                 >
-                                   <RefreshCcw size={13} />
-                                 </button>
-                                 <button
-                                   onClick={syncAllToDisk}
-                                   title="Push all to disk"
-                                   className="p-1 hover:bg-slate-800 rounded-lg text-blue-400 transition-colors"
-                                 >
-                                   <Save size={13} />
-                                 </button>
-                                 <button
-                                   onClick={() => { setDirHandle(null); setDirLinkedProjectId(null); setDirSyncStatus('idle'); }}
-                                   title="Unmount directory"
-                                   className="p-1 hover:bg-slate-800 rounded-lg text-rose-500 transition-colors"
-                                 >
-                                   <X size={13} />
-                                 </button>
-                               </>
-                             ) : (
-                               <button
-                                 onClick={mountDirectory}
-                                 title="Mount local / Termux directory"
-                                 className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-teal-400 transition-colors"
-                               >
-                                 <HardDrive size={14} />
-                               </button>
-                             )}
                              <button 
                                onClick={() => addFolder(activeProjectId!)}
                                title="New Folder"
@@ -3278,7 +2779,7 @@ const App = () => {
                                         className={`group flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl cursor-pointer transition-all ${
                                           activeFileId === file.id ? 'bg-blue-600/10 text-blue-400' : 'hover:bg-slate-800/50 text-slate-500'
                                         }`}
-                                        onClick={() => { setActiveFileId(file.id); setMobileWorkspaceView('editor'); }}
+                                        onClick={() => { setActiveFileId(file.id); setIsMobileWorkspaceEditorOpen(true); }}
                                       >
                                         <div className="flex items-center gap-2 truncate">
                                           <FileCode size={14} className={activeFileId === file.id ? 'text-blue-400' : 'text-slate-600'} />
@@ -3303,7 +2804,7 @@ const App = () => {
                               className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all ${
                                 activeFileId === file.id ? 'bg-blue-600/10 text-blue-400' : 'hover:bg-slate-800/50 text-slate-500'
                               }`}
-                              onClick={() => { setActiveFileId(file.id); setMobileWorkspaceView('editor'); }}
+                              onClick={() => { setActiveFileId(file.id); setIsMobileWorkspaceEditorOpen(true); }}
                             >
                               <div className="flex items-center gap-2 truncate">
                                 <FileCode size={14} className={activeFileId === file.id ? 'text-blue-400' : 'text-slate-600'} />
@@ -3316,24 +2817,13 @@ const App = () => {
                             </div>
                           ))}
                         </div>
-                        <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
+                        <div className="mt-4 pt-4 border-t border-slate-800">
                            <button 
                              onClick={() => deleteProject(activeProjectId!)}
                              className="w-full py-2 text-xs font-bold text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all flex items-center justify-center gap-2"
                            >
                              <Trash2 size={12} />
                              Terminate Project
-                           </button>
-                           <button 
-                             onClick={() => {
-                               if (confirm('Hard reset clears ALL projects and files from storage. Cannot be undone.')) {
-                                 hardResetWorkspace();
-                               }
-                             }}
-                             className="w-full py-2 text-xs font-bold text-slate-600 hover:text-rose-400 hover:bg-rose-500/5 rounded-xl transition-all flex items-center justify-center gap-2"
-                           >
-                             <AlertCircle size={12} />
-                             Hard Reset Storage
                            </button>
                         </div>
                       </div>
@@ -3361,12 +2851,12 @@ const App = () => {
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-bold text-slate-500 uppercase">Changes</span>
                                 <span className="px-2 py-0.5 bg-slate-800 text-[9px] font-bold text-slate-400 rounded-md">
-                                  {stagedFileSet.size} Staged
+                                  {getGitState(activeProjectId!).stagedFiles.length} Staged
                                 </span>
                               </div>
                               <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
                                 {files.filter(f => f.projectId === activeProjectId).map(file => {
-                                  const isStaged = stagedFileSet.has(file.id);
+                                  const isStaged = getGitState(activeProjectId!).stagedFiles.includes(file.id);
                                   return (
                                     <div key={file.id} className="flex items-center justify-between p-2 hover:bg-slate-800/50 rounded-xl transition-colors group">
                                       <div className="flex items-center gap-2 truncate">
@@ -3388,15 +2878,15 @@ const App = () => {
                             <div className="space-y-3">
                               <textarea 
                                 placeholder="Commit message..."
-                                value={commitMessage}
-                                onChange={e => setCommitMessage(e.target.value)}
+                                id="commit-msg"
                                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 placeholder:text-slate-700 focus:outline-none focus:border-blue-500 min-h-[60px] resize-none"
                               />
                               <button 
                                 onClick={() => {
-                                  if (!commitMessage.trim()) return;
-                                  commitChanges(activeProjectId!, commitMessage.trim());
-                                  setCommitMessage('');
+                                  const msg = (document.getElementById('commit-msg') as HTMLTextAreaElement).value;
+                                  if (!msg) return;
+                                  commitChanges(activeProjectId!, msg);
+                                  (document.getElementById('commit-msg') as HTMLTextAreaElement).value = '';
                                 }}
                                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-bold transition-all"
                               >
@@ -3514,18 +3004,17 @@ const App = () => {
                   </div>
 
                   {/* Editor Area */}
-                  <div className={`flex-1 flex flex-col gap-4 lg:gap-6 min-w-0 ${mobileWorkspaceView === 'panel' ? 'hidden lg:flex' : 'flex'}`}>
+                  <div className={`flex-1 flex-col gap-6 min-w-0 ${isMobileWorkspaceEditorOpen ? 'flex' : 'hidden lg:flex'}`}>
                     {activeFileId ? (
                       <>
                         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 lg:p-6 flex flex-col min-h-0 shadow-lg relative">
-                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 lg:mb-6">
+                           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
                               <div className="flex items-center gap-3 w-full sm:w-auto">
-                                 {/* Mobile back button */}
-                                 <button
-                                   onClick={() => setMobileWorkspaceView('panel')}
-                                   className="lg:hidden p-2 text-slate-500 hover:text-white bg-slate-800 rounded-xl"
+                                 <button 
+                                   onClick={() => setIsMobileWorkspaceEditorOpen(false)}
+                                   className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-white"
                                  >
-                                   <ArrowLeft size={16} />
+                                   <ChevronLeft size={20} />
                                  </button>
                                  <div className="bg-blue-600/10 p-2 rounded-xl">
                                     <FileCode size={18} className="text-blue-500" />
@@ -3534,54 +3023,42 @@ const App = () => {
                                    type="text"
                                    value={files.find(f => f.id === activeFileId)?.name || ''}
                                    onChange={(e) => renameFile(activeFileId!, e.target.value)}
-                                   className="bg-transparent border-none focus:outline-none font-bold text-slate-200 text-sm min-w-0 flex-1"
+                                   className="bg-transparent border-none focus:outline-none font-bold text-slate-200 text-sm"
                                  />
                               </div>
 
-                              {/* Action buttons — scrollable row on mobile */}
-                              <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto custom-scrollbar pb-1 sm:pb-0">
-                                 <button 
-                                   onClick={saveActiveFile}
-                                   className={`shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${
-                                     savedFeedback 
-                                       ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' 
-                                       : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                                   }`}
-                                 >
-                                   {savedFeedback ? <CheckCircle2 size={12} /> : <Save size={12} />}
-                                   {savedFeedback ? 'Saved' : 'Save'}
-                                 </button>
+                              <div className="flex flex-wrap items-center gap-2">
                                  <button 
                                    onClick={() => aiCodeAction('discuss', activeFileId!)}
-                                   className="shrink-0 px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <MessageSquare size={12} />
                                    Discuss
                                  </button>
                                  <button 
                                    onClick={formatCode}
-                                   className="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <Sparkles size={12} />
                                    Format
                                  </button>
                                  <button 
                                    onClick={() => aiCodeAction('analyze', activeFileId!)}
-                                   className="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <Search size={12} />
                                    Analyze
                                  </button>
                                  <button 
                                    onClick={() => aiCodeAction('refactor', activeFileId!)}
-                                   className="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <Wand2 size={12} />
                                    Refactor
                                  </button>
                                  <button 
                                    onClick={() => aiCodeAction('debug', activeFileId!)}
-                                   className="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
+                                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all"
                                  >
                                    <Bug size={12} />
                                    Debug
@@ -3592,7 +3069,7 @@ const App = () => {
                                       setTerminalCode(content);
                                       runCode();
                                    }}
-                                   className="shrink-0 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
+                                   className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
                                  >
                                    <Play size={12} />
                                    Run
@@ -3628,13 +3105,6 @@ const App = () => {
                       <div className="flex-1 bg-slate-900/20 border border-dashed border-slate-800 rounded-3xl flex flex-col items-center justify-center text-slate-600 p-8 text-center">
                         <FileCode size={48} className="mb-4 opacity-20" />
                         <p className="text-sm font-medium">Select or create a file to start developing.</p>
-                        <button
-                          onClick={() => setMobileWorkspaceView('panel')}
-                          className="lg:hidden mt-4 px-4 py-2 bg-slate-800 text-slate-400 rounded-xl text-xs font-bold flex items-center gap-2"
-                        >
-                          <Folder size={14} />
-                          Browse Files
-                        </button>
                       </div>
                     )}
                   </div>
@@ -3642,7 +3112,7 @@ const App = () => {
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-8 lg:p-12 opacity-50">
                    <div className="w-16 h-16 lg:w-20 lg:h-20 bg-slate-800 rounded-3xl flex items-center justify-center mb-6">
-                      <FolderOpen size={30} className="text-slate-600" />
+                      <FolderOpen size={30} className="text-slate-600 lg:size-40" />
                    </div>
                    <h3 className="text-lg lg:text-xl font-bold text-slate-300">No Active Workspace</h3>
                    <p className="text-xs lg:text-sm max-w-sm mt-2 font-medium leading-relaxed">Initialize a new project to start building locally-secured software nodes.</p>
@@ -3734,7 +3204,7 @@ const App = () => {
                   </>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-slate-600">
-                    <Monitor size={48} className="mb-4 opacity-20" />
+                    <Monitor size={48} lg:size={64} className="mb-4 opacity-20" />
                     <p className="text-base lg:text-lg font-medium opacity-50 text-center">Select an entry from the knowledge base or create a new one.</p>
                   </div>
                 )}
@@ -3761,9 +3231,6 @@ const App = () => {
         }
       `}</style>
     </div>
-    </UIContext.Provider>
-    </ChatContext.Provider>
-    </WorkspaceContext.Provider>
   );
 };
 

@@ -1,0 +1,263 @@
+{
+  "description": "Example MCP server configurations for different clients",
+  "configurations": {
+    "claude_desktop": {
+      "description": "Configuration for Claude Desktop",
+      "config_file_location": {
+        "macos": "~/Library/Application Support/Claude/claude_desktop_config.json",
+        "windows": "%APPDATA%\\Claude\\claude_desktop_config.json"
+      },
+      "single_server_example": {
+        "mcpServers": {
+          "gcloud-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
+            ]
+          }
+        }
+      },
+      "all_servers_example": {
+        "mcpServers": {
+          "vibe-coding-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/mcp-vibe-coding-tools.js"
+            ],
+            "env": {
+              "WORKSPACE_PATH": "/path/to/your/workspace"
+            }
+          },
+          "gitops-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gitops-server.js"
+            ],
+            "env": {
+              "GITHUB_API_KEY": "your-github-token",
+              "GITLAB_API_KEY": "your-gitlab-token"
+            }
+          },
+          "gcloud-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
+            ]
+          }
+        }
+      },
+      "with_service_account": {
+        "mcpServers": {
+          "gcloud-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
+            ],
+            "env": {
+              "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/service-account-key.json",
+              "CLOUDSDK_CORE_PROJECT": "my-project-id",
+              "CLOUDSDK_COMPUTE_REGION": "us-central1",
+              "CLOUDSDK_COMPUTE_ZONE": "us-central1-a"
+            }
+          }
+        }
+      }
+    },
+    "windsurf": {
+      "description": "Configuration for Windsurf (Codeium)",
+      "config_file_location": "~/.windsurf/mcp_config.json",
+      "single_server_example": {
+        "mcpServers": {
+          "gcloud-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
+            ]
+          }
+        }
+      },
+      "all_servers_example": {
+        "mcpServers": {
+          "vibe-coding-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/mcp-vibe-coding-tools.js"
+            ],
+            "env": {
+              "WORKSPACE_PATH": "/path/to/your/workspace"
+            }
+          },
+          "gitops-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gitops-server.js"
+            ],
+            "env": {
+              "GITHUB_API_KEY": "your-github-token",
+              "GITLAB_API_KEY": "your-gitlab-token"
+            }
+          },
+          "gcloud-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
+            ]
+          }
+        }
+      }
+    },
+    "cursor": {
+      "description": "Configuration for Cursor",
+      "config_file_location": "~/.cursor/mcp_config.json",
+      "single_server_example": {
+        "mcpServers": {
+          "gcloud-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
+            ]
+          }
+        }
+      },
+      "all_servers_example": {
+        "mcpServers": {
+          "vibe-coding-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/mcp-vibe-coding-tools.js"
+            ],
+            "env": {
+              "WORKSPACE_PATH": "/path/to/your/workspace"
+            }
+          },
+          "gitops-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gitops-server.js"
+            ],
+            "env": {
+              "GITHUB_API_KEY": "your-github-token",
+              "GITLAB_API_KEY": "your-gitlab-token"
+            }
+          },
+          "gcloud-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
+            ]
+          }
+        }
+      }
+    },
+    "cline_vscode": {
+      "description": "Configuration for Cline (VS Code Extension)",
+      "config_file_location": "VS Code settings.json",
+      "single_server_example": {
+        "cline.mcpServers": {
+          "gcloud-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
+            ]
+          }
+        }
+      },
+      "all_servers_example": {
+        "cline.mcpServers": {
+          "vibe-coding-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/mcp-vibe-coding-tools.js"
+            ],
+            "env": {
+              "WORKSPACE_PATH": "/path/to/your/workspace"
+            }
+          },
+          "gitops-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gitops-server.js"
+            ],
+            "env": {
+              "GITHUB_API_KEY": "your-github-token",
+              "GITLAB_API_KEY": "your-gitlab-token"
+            }
+          },
+          "gcloud-tools": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "environment_variables": {
+    "gcloud_tools": {
+      "GOOGLE_APPLICATION_CREDENTIALS": {
+        "description": "Path to service account key JSON file",
+        "required": false,
+        "note": "Not required if using gcloud auth application-default login"
+      },
+      "CLOUDSDK_CORE_PROJECT": {
+        "description": "Default GCP project ID",
+        "required": false
+      },
+      "CLOUDSDK_COMPUTE_REGION": {
+        "description": "Default compute region (e.g., us-central1)",
+        "required": false
+      },
+      "CLOUDSDK_COMPUTE_ZONE": {
+        "description": "Default compute zone (e.g., us-central1-a)",
+        "required": false
+      }
+    },
+    "gitops_tools": {
+      "GITHUB_API_KEY": {
+        "description": "GitHub personal access token",
+        "required": true
+      },
+      "GITLAB_API_KEY": {
+        "description": "GitLab personal access token",
+        "required": true
+      }
+    },
+    "vibe_coding_tools": {
+      "WORKSPACE_PATH": {
+        "description": "Path to your workspace directory",
+        "required": false,
+        "default": "Current working directory"
+      }
+    }
+  },
+  "setup_steps": [
+    "1. Install Node.js 18+ (https://nodejs.org/)",
+    "2. Install gcloud CLI (https://cloud.google.com/sdk/docs/install)",
+    "3. Authenticate: gcloud auth application-default login",
+    "4. Set project: gcloud config set project YOUR_PROJECT_ID",
+    "5. Clone/download mcp-vibe-coding-tools repository",
+    "6. Run: npm install && npm run build",
+    "7. Update MCP client config with absolute paths",
+    "8. Restart your MCP client",
+    "9. Test with: 'List my GCP projects'"
+  ],
+  "troubleshooting": {
+    "gcloud_not_found": {
+      "issue": "gcloud command not found",
+      "solution": "Add gcloud to PATH or reinstall: brew install google-cloud-sdk"
+    },
+    "authentication_failed": {
+      "issue": "Authentication failed",
+      "solution": "Run: gcloud auth application-default login --force"
+    },
+    "permission_denied": {
+      "issue": "Permission denied errors",
+      "solution": "Check IAM roles: gcloud projects get-iam-policy PROJECT_ID"
+    },
+    "api_not_enabled": {
+      "issue": "API not enabled",
+      "solution": "Enable API: gcloud services enable SERVICE_NAME.googleapis.com"
+    }
+  }
+}

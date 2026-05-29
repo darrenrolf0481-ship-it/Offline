@@ -25,5 +25,6 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": ["node_modules", "**/test/**", "**/test_repo/**", "github-mcp-repo", "agency-agents-repo", "serena-repo", "my-SuperAGI", "vibe-coding-repo", "mcp-test.ts", "mcp-test-stdio.ts", "mcp-github-adapter.ts"]
 }
