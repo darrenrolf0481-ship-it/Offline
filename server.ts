@@ -48,7 +48,7 @@ const baseMcpTools = [
 
 async function startServer() {
   const app = express();
-  const PORT = 3456;
+  const PORT = 3005;
 
   app.use(cors());
   
