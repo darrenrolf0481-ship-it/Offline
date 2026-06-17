@@ -7,27 +7,35 @@ A comprehensive MCP server with **100+ tools** that enables AI to operate as a c
 ## 📊 Tool Categories (14 Total)
 
 ### 1. **Filesystem Operations** (6 tools)
+
 Basic file and directory operations for project management.
 
 ### 2. **CLI Execution** (3 tools)
+
 Execute shell commands, manage environment, find binaries.
 
 ### 3. **Git Operations** (9 tools)
+
 Complete version control: status, commit, push, pull, branch, stash, clone, diff, log.
 
 ### 4. **Web & HTTP** (4 tools)
+
 Fetch webpages, parse HTML, extract links, download files.
 
 ### 5. **Node.js/npm** (5 tools)
+
 Package management, script execution, dependency updates, project initialization.
 
 ### 6. **Python/pip** (5 tools)
+
 Virtual environments, package installation, requirements management, script execution.
 
 ### 7. **Testing & Building** (4 tools)
+
 Run tests, build projects, start dev servers, lint code.
 
 ### 8. **Automation & Orchestration** (5 tools)
+
 - `validate_project` - Comprehensive validation with auto-iteration
 - `create_validation_script` - Generate validation automation
 - `setup_project_automation` - Complete CI/CD setup
@@ -35,6 +43,7 @@ Run tests, build projects, start dev servers, lint code.
 - `fix_common_issues` - Detect and auto-fix problems
 
 ### 9. **Diagnostics & Logging** (9 tools)
+
 - `get_vscode_problems` - Real-time TypeScript/ESLint errors
 - `read_log_file` - Parse logs with filtering
 - `tail_log_file` - Monitor recent log activity
@@ -46,26 +55,31 @@ Run tests, build projects, start dev servers, lint code.
 - `aggregate_logs` - Multi-file log analysis
 
 ### 10. **Planning & Requirements** (3 tools) ⭐ NEW
+
 - `generate_requirements` - Transform ideas into comprehensive PRDs
 - `create_product_roadmap` - Generate phased development roadmap
 - `generate_user_stories` - Create detailed user stories with acceptance criteria
 
 ### 11. **Research & Analysis** (3 tools) ⭐ NEW
+
 - `analyze_tech_stack` - Recommend optimal technologies
 - `research_best_practices` - Industry best practices database
 - `competitive_analysis` - Market and competitive intelligence
 
 ### 12. **Architecture & Design** (3 tools) ⭐ NEW
+
 - `design_system_architecture` - Complete system architecture design
 - `design_database_schema` - Database schema with DDL generation
 - `generate_api_spec` - OpenAPI/Swagger specification
 
 ### 13. **Security & Compliance** (3 tools) ⭐ NEW
+
 - `security_audit` - Comprehensive vulnerability scanning
 - `generate_security_policy` - Security documentation and policies
 - `scan_for_vulnerabilities` - Targeted SAST and dependency scanning
 
 ### 14. **Deployment & Infrastructure** (3 tools) ⭐ NEW
+
 - `generate_dockerfile` - Optimized multi-stage Docker builds
 - `generate_cicd_pipeline` - GitHub Actions / GitLab CI workflows
 - `generate_kubernetes_manifests` - K8s deployment configs
@@ -75,36 +89,42 @@ Run tests, build projects, start dev servers, lint code.
 The MCP server enables AI to function as:
 
 ### **📋 Requirements Team**
+
 - Analyze product ideas
 - Generate comprehensive requirements
 - Create user stories and acceptance criteria
 - Define success metrics
 
 ### **📊 Product Team**
+
 - Create product roadmaps
 - Conduct competitive analysis
 - Plan feature prioritization
 - Define monetization strategies
 
 ### **🔬 R&D Team**
+
 - Research and evaluate technologies
 - Recommend optimal tech stacks
 - Study industry best practices
 - Design proof of concepts
 
 ### **🏗️ Architecture Team**
+
 - Design system architecture (multi-layer)
 - Create database schemas
 - Generate API specifications
 - Document data flows
 
 ### **💻 Development Team**
+
 - Implement features
 - Write comprehensive tests (>80% coverage)
 - Fix bugs autonomously
 - Optimize code quality
 
 ### **🔒 Security Team**
+
 - Scan for vulnerabilities
 - Audit dependencies
 - Detect exposed secrets
@@ -112,6 +132,7 @@ The MCP server enables AI to function as:
 - Ensure compliance (OWASP, GDPR, SOC 2)
 
 ### **🚀 DevOps / IT Team**
+
 - Generate Dockerfiles
 - Create CI/CD pipelines
 - Configure Kubernetes deployments
@@ -119,6 +140,7 @@ The MCP server enables AI to function as:
 - Automate infrastructure
 
 ### **📚 Documentation Team**
+
 - Auto-generate README, CONTRIBUTING, ARCHITECTURE
 - Create API documentation
 - Maintain CHANGELOG
@@ -183,7 +205,9 @@ The MCP server enables AI to function as:
 Two comprehensive instruction files guide AI behavior:
 
 ### 1. **autonomous-development.instructions.md**
+
 Core principles for autonomous operation:
+
 - Act, don't ask
 - Fix, don't report
 - Test everything
@@ -191,7 +215,9 @@ Core principles for autonomous operation:
 - Iterate until perfect
 
 ### 2. **complete-development-org.instructions.md** ⭐ NEW
+
 Complete workflow for operating as a full development organization:
+
 - **Phase 1:** Requirements & Product Team workflow
 - **Phase 2:** Research & Development procedures
 - **Phase 3:** Software Development best practices
@@ -233,11 +259,13 @@ This MCP server enables the complete journey:
 ## 🚀 What Makes This Different
 
 ### Other MCP Servers
+
 - Basic file operations
 - Simple command execution
 - Limited scope
 
 ### MCP Vibe Coding Tools
+
 - **Complete dev organization** (100+ tools)
 - **End-to-end workflow** (idea → product)
 - **Autonomous operation** (fix issues without asking)
@@ -247,6 +275,7 @@ This MCP server enables the complete journey:
 ## 📈 Impact
 
 With this MCP server, AI can:
+
 - Go from idea to MVP in hours instead of weeks
 - Build enterprise-grade applications autonomously
 - Ensure security and compliance from day one

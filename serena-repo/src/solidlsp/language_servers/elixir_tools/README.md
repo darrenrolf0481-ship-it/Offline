@@ -41,6 +41,7 @@ The integration uses the default Expert configuration with:
 ### Version Management (asdf)
 
 Expert automatically respects project-specific Elixir versions when using asdf:
+
 - If a `.tool-versions` file exists in the project root, Expert will use the specified Elixir version
 - Expert is launched from the project directory, allowing it to pick up project configuration
 - No additional configuration needed - just ensure asdf is installed and the project has a `.tool-versions` file
@@ -60,6 +61,7 @@ The Elixir language server is automatically selected when working with Elixir pr
 ### Important: Project Compilation
 
 Expert requires your Elixir project to be **compiled** for optimal performance, especially for:
+
 - Cross-file reference resolution
 - Complete symbol information
 - Accurate go-to-definition

@@ -17,12 +17,12 @@ ToolsetMetadataRepos = inventory.ToolsetMetadata{
 
 ### Toolset Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `ID` | `ToolsetID` | Unique identifier used in URLs and CLI flags (e.g., `repos`, `issues`) |
-| `Description` | `string` | Human-readable description shown in documentation |
-| `Default` | `bool` | Whether this toolset is enabled by default |
-| `Icon` | `string` | Octicon name for visual representation in MCP clients |
+| Field         | Type        | Description                                                            |
+| ------------- | ----------- | ---------------------------------------------------------------------- |
+| `ID`          | `ToolsetID` | Unique identifier used in URLs and CLI flags (e.g., `repos`, `issues`) |
+| `Description` | `string`    | Human-readable description shown in documentation                      |
+| `Default`     | `bool`      | Whether this toolset is enabled by default                             |
+| `Icon`        | `string`    | Octicon name for visual representation in MCP clients                  |
 
 ## Adding Icons to Toolsets
 
@@ -58,12 +58,14 @@ script/fetch-icons
 ```
 
 This script:
+
 - Downloads the 24px SVG from [Primer Octicons](https://github.com/primer/octicons)
 - Converts to PNG with light theme (dark icons for light backgrounds)
 - Converts to PNG with dark theme (white icons for dark backgrounds)
 - Saves both variants to `pkg/octicons/icons/`
 
 **Requirements:** The script requires `rsvg-convert`:
+
 - Ubuntu/Debian: `sudo apt-get install librsvg2-bin`
 - macOS: `brew install librsvg`
 
@@ -90,6 +92,7 @@ go run ./cmd/github-mcp-server generate-docs
 ```
 
 This updates icons in:
+
 - `README.md` - Toolsets table and tool section headers
 - `docs/remote-server.md` - Remote toolsets table
 
@@ -141,28 +144,28 @@ icons := octicons.Icons("repo")
 
 ## Existing Toolset Icons
 
-| Toolset | Octicon Name |
-|---------|--------------|
-| Context | `person` |
-| Repositories | `repo` |
-| Issues | `issue-opened` |
-| Pull Requests | `git-pull-request` |
-| Git | `git-branch` |
-| Users | `people` |
-| Organizations | `organization` |
-| Actions | `workflow` |
-| Code Security | `codescan` |
-| Secret Protection | `shield-lock` |
-| Dependabot | `dependabot` |
-| Discussions | `comment-discussion` |
-| Gists | `logo-gist` |
-| Security Advisories | `shield` |
-| Projects | `project` |
-| Labels | `tag` |
-| Stargazers | `star` |
-| Notifications | `bell` |
-| Copilot | `copilot` |
-| Support Search | `book` |
+| Toolset             | Octicon Name         |
+| ------------------- | -------------------- |
+| Context             | `person`             |
+| Repositories        | `repo`               |
+| Issues              | `issue-opened`       |
+| Pull Requests       | `git-pull-request`   |
+| Git                 | `git-branch`         |
+| Users               | `people`             |
+| Organizations       | `organization`       |
+| Actions             | `workflow`           |
+| Code Security       | `codescan`           |
+| Secret Protection   | `shield-lock`        |
+| Dependabot          | `dependabot`         |
+| Discussions         | `comment-discussion` |
+| Gists               | `logo-gist`          |
+| Security Advisories | `shield`             |
+| Projects            | `project`            |
+| Labels              | `tag`                |
+| Stargazers          | `star`               |
+| Notifications       | `bell`               |
+| Copilot             | `copilot`            |
+| Support Search      | `book`               |
 
 ## Troubleshooting
 
@@ -195,6 +198,7 @@ Verifies that all toolset `Icon` fields reference icons that are properly embedd
 Ensures all toolsets have an `Icon` field set.
 
 If any of these tests fail:
+
 1. Add the missing icon to `pkg/octicons/required_icons.txt`
 2. Run `script/fetch-icons` to download the icon
 3. Commit the new icon files

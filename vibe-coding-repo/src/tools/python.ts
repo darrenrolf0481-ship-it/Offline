@@ -1,26 +1,26 @@
-import { exec } from "child_process";
-import { formatToolResponse } from "../utils/response.js";
-import { promisify } from "util";
-import * as fs from "fs/promises";
-import * as path from "path";
-import { z } from "zod";
+import { exec } from 'child_process';
+import { formatToolResponse } from '../utils/response.js';
+import { promisify } from 'util';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { z } from 'zod';
 
 const execAsync = promisify(exec);
 const workspacePath = process.env.WORKSPACE_PATH || process.cwd();
 
 export const pythonTools = [
   {
-    name: "python_create_venv",
-    description: "Create a Python virtual environment",
+    name: 'python_create_venv',
+    description: 'Create a Python virtual environment',
     inputSchema: z.object({
-      name: z.string().describe("Virtual environment name").default("venv").optional(),
+      name: z.string().describe('Virtual environment name').default('venv').optional(),
     }),
     handler: async (args: any) => {
-      const venvName = args.name || "venv";
+      const venvName = args.name || 'venv';
       const { stdout, stderr } = await execAsync(`python3 -m venv ${venvName}`, {
         cwd: workspacePath,
       });
-      
+
       const result = {
         success: true,
         venv: venvName,
@@ -32,38 +32,39 @@ export const pythonTools = [
     },
   },
   {
-    name: "pip_install",
-    description: "Install Python packages using pip",
+    name: 'pip_install',
+    description: 'Install Python packages using pip',
     inputSchema: z.object({
-      packages: z.array(z.string()).describe("Package names to install").optional(),
-      requirements: z.string().describe("Path to requirements.txt file").optional(),
-      venv: z.string().describe("Virtual environment to use").default("venv").optional(),
+      packages: z.array(z.string()).describe('Package names to install').optional(),
+      requirements: z.string().describe('Path to requirements.txt file').optional(),
+      venv: z.string().describe('Virtual environment to use').default('venv').optional(),
     }),
     handler: async (args: any) => {
-      const venvName = args.venv || "venv";
-      const pipPath = process.platform === "win32"
-        ? path.join(workspacePath, venvName, "Scripts", "pip")
-        : path.join(workspacePath, venvName, "bin", "pip");
-      
+      const venvName = args.venv || 'venv';
+      const pipPath =
+        process.platform === 'win32'
+          ? path.join(workspacePath, venvName, 'Scripts', 'pip')
+          : path.join(workspacePath, venvName, 'bin', 'pip');
+
       let command: string;
-      
+
       if (args.requirements) {
         command = `"${pipPath}" install -r ${args.requirements}`;
       } else if (args.packages && args.packages.length > 0) {
-        command = `"${pipPath}" install ${args.packages.join(" ")}`;
+        command = `"${pipPath}" install ${args.packages.join(' ')}`;
       } else {
-        throw new Error("Either packages or requirements must be specified");
+        throw new Error('Either packages or requirements must be specified');
       }
-      
+
       const { stdout, stderr } = await execAsync(command, {
         cwd: workspacePath,
         timeout: 300000,
       });
-      
+
       const result = {
         success: true,
         command,
-        packages: args.packages || ["from requirements.txt"],
+        packages: args.packages || ['from requirements.txt'],
         stdout: stdout.trim(),
         stderr: stderr.trim(),
       };
@@ -71,58 +72,60 @@ export const pythonTools = [
     },
   },
   {
-    name: "pip_freeze",
-    description: "Generate requirements.txt from installed packages",
+    name: 'pip_freeze',
+    description: 'Generate requirements.txt from installed packages',
     inputSchema: z.object({
-      venv: z.string().describe("Virtual environment to use").default("venv").optional(),
-      output: z.string().describe("Output file path").default("requirements.txt").optional(),
+      venv: z.string().describe('Virtual environment to use').default('venv').optional(),
+      output: z.string().describe('Output file path').default('requirements.txt').optional(),
     }),
     handler: async (args: any) => {
-      const venvName = args.venv || "venv";
-      const pipPath = process.platform === "win32"
-        ? path.join(workspacePath, venvName, "Scripts", "pip")
-        : path.join(workspacePath, venvName, "bin", "pip");
-      
+      const venvName = args.venv || 'venv';
+      const pipPath =
+        process.platform === 'win32'
+          ? path.join(workspacePath, venvName, 'Scripts', 'pip')
+          : path.join(workspacePath, venvName, 'bin', 'pip');
+
       const { stdout } = await execAsync(`"${pipPath}" freeze`, {
         cwd: workspacePath,
       });
-      
-      const outputPath = path.join(workspacePath, args.output || "requirements.txt");
+
+      const outputPath = path.join(workspacePath, args.output || 'requirements.txt');
       await fs.writeFile(outputPath, stdout);
-      
+
       const result = {
         success: true,
-        output: args.output || "requirements.txt",
-        packages: stdout.trim().split("\n"),
+        output: args.output || 'requirements.txt',
+        packages: stdout.trim().split('\n'),
       };
       return formatToolResponse(result);
     },
   },
   {
-    name: "python_run_script",
-    description: "Run a Python script",
+    name: 'python_run_script',
+    description: 'Run a Python script',
     inputSchema: z.object({
-      script: z.string().describe("Path to Python script"),
-      args: z.array(z.string()).describe("Arguments to pass to the script").optional(),
-      venv: z.string().describe("Virtual environment to use").optional(),
+      script: z.string().describe('Path to Python script'),
+      args: z.array(z.string()).describe('Arguments to pass to the script').optional(),
+      venv: z.string().describe('Virtual environment to use').optional(),
     }),
     handler: async (args: any) => {
-      let pythonPath = "python3";
-      
+      let pythonPath = 'python3';
+
       if (args.venv) {
-        pythonPath = process.platform === "win32"
-          ? path.join(workspacePath, args.venv, "Scripts", "python")
-          : path.join(workspacePath, args.venv, "bin", "python");
+        pythonPath =
+          process.platform === 'win32'
+            ? path.join(workspacePath, args.venv, 'Scripts', 'python')
+            : path.join(workspacePath, args.venv, 'bin', 'python');
       }
-      
-      const scriptArgs = args.args ? " " + args.args.join(" ") : "";
+
+      const scriptArgs = args.args ? ' ' + args.args.join(' ') : '';
       const command = `"${pythonPath}" ${args.script}${scriptArgs}`;
-      
+
       const { stdout, stderr } = await execAsync(command, {
         cwd: workspacePath,
         timeout: 300000,
       });
-      
+
       const result = {
         success: true,
         script: args.script,
@@ -133,24 +136,25 @@ export const pythonTools = [
     },
   },
   {
-    name: "python_version",
-    description: "Get Python version information",
+    name: 'python_version',
+    description: 'Get Python version information',
     inputSchema: z.object({
-      venv: z.string().describe("Virtual environment to check").optional(),
+      venv: z.string().describe('Virtual environment to check').optional(),
     }),
     handler: async (args: any) => {
-      let pythonPath = "python3";
-      
+      let pythonPath = 'python3';
+
       if (args.venv) {
-        pythonPath = process.platform === "win32"
-          ? path.join(workspacePath, args.venv, "Scripts", "python")
-          : path.join(workspacePath, args.venv, "bin", "python");
+        pythonPath =
+          process.platform === 'win32'
+            ? path.join(workspacePath, args.venv, 'Scripts', 'python')
+            : path.join(workspacePath, args.venv, 'bin', 'python');
       }
-      
+
       const { stdout } = await execAsync(`"${pythonPath}" --version`, {
         cwd: workspacePath,
       });
-      
+
       const result = {
         success: true,
         version: stdout.trim(),

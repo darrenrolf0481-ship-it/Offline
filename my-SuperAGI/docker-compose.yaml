@@ -3,10 +3,10 @@ version: '3.8'
 services:
   backend:
     volumes:
-      - "./:/app"
+      - './:/app'
     build: .
     ports:
-      - "8001:8001"
+      - '8001:8001'
     depends_on:
       - super__redis
       - super__postgres
@@ -15,7 +15,7 @@ services:
 
   celery:
     volumes:
-      - "./:/app"
+      - './:/app'
     build:
       context: .
       dockerfile: DockerfileCelery
@@ -28,7 +28,7 @@ services:
   gui:
     build: ./gui
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - NEXT_PUBLIC_API_BASE_URL=http://localhost:8001
     networks:
@@ -39,12 +39,12 @@ services:
       - /app/.next
 
   super__redis:
-    image: "redis:latest"
+    image: 'redis:latest'
     networks:
       - super_network
 
   super__postgres:
-    image: "postgres:latest"
+    image: 'postgres:latest'
     environment:
       - POSTGRES_USER=superagi
       - POSTGRES_PASSWORD=password
@@ -54,7 +54,7 @@ services:
     networks:
       - super_network
     ports:
-      - "5432:5432"
+      - '5432:5432'
 
 networks:
   super_network:

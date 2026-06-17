@@ -17,8 +17,8 @@ const serverPath = join(__dirname, '..', 'dist', 'index.js');
 const server = spawn('node', [serverPath], {
   env: {
     ...process.env,
-    WORKSPACE_PATH: process.cwd()
-  }
+    WORKSPACE_PATH: process.cwd(),
+  },
 });
 
 let output = '';
@@ -47,7 +47,7 @@ setTimeout(() => {
     console.log('Output received:', output);
     process.exit(1);
   }
-  
+
   server.kill();
 }, 2000);
 

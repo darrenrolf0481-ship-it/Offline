@@ -121,6 +121,7 @@ Add to VS Code settings or workspace settings:
 ## Available Tools (40+ Tools!)
 
 ### Filesystem (6 tools)
+
 - `read_file` - Read file contents
 - `write_file` - Create/update files
 - `list_directory` - Browse directories
@@ -129,11 +130,13 @@ Add to VS Code settings or workspace settings:
 - `create_directory` - Create directories
 
 ### CLI (3 tools)
+
 - `execute_command` - Run shell commands
 - `get_environment` - Get env variables
 - `which_command` - Find command paths
 
 ### Git (9 tools)
+
 - `git_status` - Check status
 - `git_log` - View history
 - `git_diff` - See changes
@@ -145,12 +148,14 @@ Add to VS Code settings or workspace settings:
 - `git_stash` - Stash changes
 
 ### Web (4 tools)
+
 - `fetch_webpage` - Download pages
 - `parse_html` - Extract data
 - `extract_links` - Get all links
 - `download_file` - Download files
 
 ### Node.js (5 tools)
+
 - `npm_install` - Install packages
 - `npm_run_script` - Run scripts
 - `npm_outdated` - Check updates
@@ -158,6 +163,7 @@ Add to VS Code settings or workspace settings:
 - `read_package_json` - Read package.json
 
 ### Python (5 tools)
+
 - `python_create_venv` - Create venv
 - `pip_install` - Install packages
 - `pip_freeze` - Generate requirements
@@ -165,6 +171,7 @@ Add to VS Code settings or workspace settings:
 - `python_version` - Check version
 
 ### Testing (4 tools)
+
 - `run_tests` - Execute test suites
 - `build_project` - Build projects
 - `start_dev_server` - Start servers
@@ -208,6 +215,7 @@ To publish this server to npm so others can use it:
 4. Run: `npm publish`
 
 Then anyone can install with:
+
 ```bash
 npm install -g mcp-vibe-coding-tools
 ```

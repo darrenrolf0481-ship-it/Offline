@@ -7,9 +7,8 @@
 
 # Codex (GPT-5.4, high)
 
-
 > **One-line summary:** As a coding agent, I would ask my owner to add Serena because it turns fragile text-and-line-number work into precise symbol-aware navigation and
-refactoring, which makes real code changes feel faster, safer, and far less blind.
+> refactoring, which makes real code changes feel faster, safer, and far less blind.
 
 This report compares Serena's JetBrains-backed semantic coding tools with built-in file, shell, search, and patch tools in this repository. The comparison assumes competent use of both toolsets: built-ins are used for text, file, shell, config, and small patch work; Serena is used where symbol identity, language semantics, or IDE refactoring semantics apply.
 
@@ -42,15 +41,15 @@ Tasks outside Serena's scope:
 
 Value-weighted summary:
 
-| Rank | Difference | Frequency | Value per hit | Delta |
-|---|---:|---:|---:|---|
-| 1 | Cross-file semantic refactors | Medium-high | High | Often avoids 5-20 manual edit/search/verify steps and reduces partial-update risk. |
-| 2 | Code usages vs text mentions | High | Medium-high | Removes noisy grep triage for "who uses this symbol?" |
-| 3 | Symbol overview/body retrieval | High | Medium | Avoids large reads and stale line targeting. |
-| 4 | Type hierarchy/implementations | Medium | High | Hard to reproduce correctly with text search, especially transitively. |
-| 5 | Stable addressing across edit chains | Medium | Medium | Reduces refresh work after line shifts. |
-| 6 | External dependency lookup | Low-medium | High | Needs IDE index; built-ins need source/decompiler infrastructure. |
-| 7 | Small local edits | High | Neutral/negative for Serena | Built-in patch/edit usually sends less. |
+| Rank |                           Difference |   Frequency |               Value per hit | Delta                                                                              |
+| ---- | -----------------------------------: | ----------: | --------------------------: | ---------------------------------------------------------------------------------- |
+| 1    |        Cross-file semantic refactors | Medium-high |                        High | Often avoids 5-20 manual edit/search/verify steps and reduces partial-update risk. |
+| 2    |         Code usages vs text mentions |        High |                 Medium-high | Removes noisy grep triage for "who uses this symbol?"                              |
+| 3    |       Symbol overview/body retrieval |        High |                      Medium | Avoids large reads and stale line targeting.                                       |
+| 4    |       Type hierarchy/implementations |      Medium |                        High | Hard to reproduce correctly with text search, especially transitively.             |
+| 5    | Stable addressing across edit chains |      Medium |                      Medium | Reduces refresh work after line shifts.                                            |
+| 6    |           External dependency lookup |  Low-medium |                        High | Needs IDE index; built-ins need source/decompiler infrastructure.                  |
+| 7    |                    Small local edits |        High | Neutral/negative for Serena | Built-in patch/edit usually sends less.                                            |
 
 **Verdict:** Serena materially changes symbol-centric exploration and refactoring; it does not replace built-ins for ordinary text, file, shell, config, or tiny local edits.
 
@@ -333,7 +332,7 @@ Serena result:
 {
   "source_relative_path": "src/main/java/de/oraios/serena/service/endpoint/InspectionRunner.java",
   "target_relative_path": "src/main/java/de/oraios/serena/service/endpoint",
-  "moved_symbol": {"name_path": "PendingFix", "type": "CLASS"}
+  "moved_symbol": { "name_path": "PendingFix", "type": "CLASS" }
 }
 ```
 
@@ -506,14 +505,14 @@ Observed result: built-ins exposed plugin registration, Gradle platform setup, U
 
 Payload differences across edit sizes:
 
-| Task | Built-in payload | Serena payload | More efficient |
-|---|---|---|---|
-| 1-line string tweak | Tiny patch hunk, 1 changed line | Full 11-line method body | Built-ins |
-| Medium method rewrite | 10-line diff hunk | Full 8-line replacement method | Roughly equal |
-| Large body rewrite | Large contextual patch, 38-line diff | Full symbol text, about 70 lines | Roughly equal; Serena has better target |
-| Insert method | Inserted body plus surrounding context | Inserted body plus name path | Serena slightly |
-| Private one-file rename | `rg` plus 2-line patch | optional refs query plus rename command | Roughly equal |
-| Cross-file rename/move/inline | Multiple searches, file operations, patches, verifications | One semantic refactor plus diff/status | Serena |
+| Task                          | Built-in payload                                           | Serena payload                          | More efficient                          |
+| ----------------------------- | ---------------------------------------------------------- | --------------------------------------- | --------------------------------------- |
+| 1-line string tweak           | Tiny patch hunk, 1 changed line                            | Full 11-line method body                | Built-ins                               |
+| Medium method rewrite         | 10-line diff hunk                                          | Full 8-line replacement method          | Roughly equal                           |
+| Large body rewrite            | Large contextual patch, 38-line diff                       | Full symbol text, about 70 lines        | Roughly equal; Serena has better target |
+| Insert method                 | Inserted body plus surrounding context                     | Inserted body plus name path            | Serena slightly                         |
+| Private one-file rename       | `rg` plus 2-line patch                                     | optional refs query plus rename command | Roughly equal                           |
+| Cross-file rename/move/inline | Multiple searches, file operations, patches, verifications | One semantic refactor plus diff/status  | Serena                                  |
 
 Forced reads:
 

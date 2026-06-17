@@ -1,4 +1,4 @@
-version: "2"
+version: '2'
 run:
   concurrency: 4
   tests: true
@@ -33,11 +33,11 @@ linters:
     rules:
       - linters:
           - revive
-        text: "var-naming: avoid package names that conflict with Go standard library package names"
+        text: 'var-naming: avoid package names that conflict with Go standard library package names'
   settings:
     staticcheck:
       checks:
-        - "all"
+        - 'all'
         - -QF1008
         - -ST1000
 formatters:

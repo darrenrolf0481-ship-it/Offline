@@ -7,7 +7,7 @@
 This MCP server operates as a **complete software development company in a box**, providing 100+ tools that enable AI to function as:
 
 - **📋 Requirements Team** - Requirements analysis, user stories, acceptance criteria
-- **📊 Product Team** - Roadmaps, competitive analysis, market research  
+- **📊 Product Team** - Roadmaps, competitive analysis, market research
 - **🔬 R&D Team** - Technology research, architecture design, proof of concepts
 - **🏗️ IT Department** - Infrastructure, deployment, monitoring, automation
 - **🔒 Security Team** - Vulnerability scanning, auditing, compliance, hardening
@@ -57,6 +57,7 @@ This project uses `@modelcontextprotocol/sdk@^1.24.3` with the modern `McpServer
 This is usually a **client cache issue**, not a server issue. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for full fix.
 
 **Quick fix:**
+
 1. Clean rebuild: `rm -rf dist node_modules && npm install && npm run build`
 2. **Completely quit and restart your MCP client** (Claude Desktop, Cursor, etc.)
 3. Clear client cache if needed (see troubleshooting guide)
@@ -68,21 +69,25 @@ Version mismatches between package.json and node_modules will break the server.
 This package provides **three separate MCP servers**:
 
 ### 1. `mcp-vibe-coding-tools` (Main Server)
+
 Local development tools for filesystem, git, testing, automation, diagnostics, kubernetes, and RAG.
 
 **Entry point:** `dist/mcp-vibe-coding-tools.js`
 
 ### 2. `mcp-gitops-tools` (GitOps Server)
+
 Remote GitOps operations for GitHub Actions, GitLab CI/CD, and GitLab API.
 
 **Entry point:** `dist/gitops-server.js`
 
 ### 3. `mcp-gcloud-tools` (Google Cloud Server) 🆕
+
 Google Cloud Platform integration with 35+ tools for GKE, BigQuery, Cloud Run, Dataflow, Logging, and more. Uses Application Default Credentials (ADC) for seamless authentication.
 
 **Entry point:** `dist/gcloud-server.js`
 
 **Documentation:**
+
 - [GCP_README.md](GCP_README.md) - Complete overview
 - [GCP_QUICKSTART.md](GCP_QUICKSTART.md) - Quick start guide
 - [GCP_TOOLS.md](GCP_TOOLS.md) - All 35+ tools reference
@@ -149,6 +154,7 @@ Google Cloud Platform integration with 35+ tools for GKE, BigQuery, Cloud Run, D
 #### `validate_project`
 
 Run complete project validation suite:
+
 - Linting with auto-fix
 - Type checking
 - Test execution with coverage
@@ -158,6 +164,7 @@ Run complete project validation suite:
 #### `create_validation_script`
 
 Generate comprehensive validation scripts:
+
 - Add lint, test, build commands to package.json
 - Set up pre-commit hooks
 - Configure coverage thresholds
@@ -166,6 +173,7 @@ Generate comprehensive validation scripts:
 #### `setup_project_automation`
 
 Complete automation setup:
+
 - GitHub Actions / GitLab CI workflows
 - Dependabot configuration
 - Pre-commit hooks
@@ -174,6 +182,7 @@ Complete automation setup:
 #### `generate_project_docs`
 
 Auto-generate documentation:
+
 - CONTRIBUTING.md with dev workflow
 - ARCHITECTURE.md with system design
 - CHANGELOG.md with version history
@@ -182,6 +191,7 @@ Auto-generate documentation:
 #### `fix_common_issues`
 
 Detect and auto-fix problems:
+
 - Missing package.json scripts
 - Missing .gitignore
 - Missing README
@@ -191,7 +201,9 @@ Detect and auto-fix problems:
 ### **🔍 Diagnostics & Logging (8 tools)**
 
 #### `get_vscode_problems`
+
 Get real-time compilation and linting errors:
+
 - Runs TypeScript compiler to find type errors
 - Executes ESLint to detect code quality issues
 - Returns structured problem list with file, line, severity
@@ -201,6 +213,7 @@ Get real-time compilation and linting errors:
 #### `read_log_file`
 
 Read and parse log files with smart filtering:
+
 - Tail last N lines (like `tail -n`)
 - Filter by log level (ERROR, WARN, INFO, DEBUG)
 - Apply custom regex patterns
@@ -210,6 +223,7 @@ Read and parse log files with smart filtering:
 #### `tail_log_file`
 
 Monitor log files for recent activity:
+
 - Get snapshot of recent log entries
 - Useful for monitoring build/test output
 - View last N lines of any log file
@@ -217,6 +231,7 @@ Monitor log files for recent activity:
 #### `search_logs`
 
 Search all logs for specific patterns:
+
 - Recursive search through log directories
 - Context lines before/after matches
 - Regex pattern support
@@ -226,7 +241,8 @@ Search all logs for specific patterns:
 #### `find_log_files`
 
 Discover all log files in workspace:
-- Glob pattern matching (*.log, **/*.log)
+
+- Glob pattern matching (_.log, \*\*/_.log)
 - File size and modification time
 - Sort by most recent
 - Exclude node_modules by default
@@ -234,6 +250,7 @@ Discover all log files in workspace:
 #### `analyze_error_logs`
 
 Deep analysis of log files for errors:
+
 - Extract errors, warnings, exceptions
 - Parse stack traces automatically
 - Categorize error types
@@ -243,6 +260,7 @@ Deep analysis of log files for errors:
 #### `watch_log_changes`
 
 Monitor log file changes incrementally:
+
 - Read only new content since last position
 - Efficient incremental log monitoring
 - Get byte position for next read
@@ -251,6 +269,7 @@ Monitor log file changes incrementally:
 #### `get_terminal_history`
 
 Access recent terminal commands:
+
 - Read zsh/bash history files
 - Parse timestamps (zsh extended format)
 - Filter by command pattern
@@ -259,6 +278,7 @@ Access recent terminal commands:
 #### `aggregate_logs`
 
 Combine and analyze multiple log files:
+
 - Group by level, file, hour, or day
 - Extract time ranges
 - Count entries by category
@@ -267,6 +287,7 @@ Combine and analyze multiple log files:
 #### `get_xcode_logs`
 
 Get Xcode build logs, crash logs, and simulator logs:
+
 - Build logs from DerivedData
 - Simulator runtime logs
 - Crash reports from DiagnosticReports
@@ -275,6 +296,7 @@ Get Xcode build logs, crash logs, and simulator logs:
 #### `get_android_logs`
 
 Get Android logcat and build logs:
+
 - Logcat with priority/tag filtering
 - Gradle build logs
 - Parse structured log format
@@ -282,6 +304,7 @@ Get Android logcat and build logs:
 #### `get_react_native_logs`
 
 Get React Native Metro bundler and app logs:
+
 - Metro bundler output
 - iOS simulator logs
 - Android logcat for RN apps
@@ -289,24 +312,31 @@ Get React Native Metro bundler and app logs:
 ### Kubernetes Operations (7 tools)
 
 #### `kubectl_get_pods`
+
 List pods in a namespace with status information.
 
 #### `kubectl_describe_pod`
+
 Get detailed information about a specific pod.
 
 #### `kubectl_get_logs`
+
 Fetch logs from a pod with filtering options.
 
 #### `kubectl_get_deployments`
+
 List all deployments with replica status.
 
 #### `kubectl_get_services`
+
 List all services with IP and port information.
 
 #### `kubectl_get_events`
+
 Get cluster events for debugging issues.
 
 #### `kubectl_get_resource_status`
+
 Get status of any Kubernetes resource type.
 
 **Note:** All kubectl tools are read-only - for validation and debugging only, no destructive operations.
@@ -314,24 +344,31 @@ Get status of any Kubernetes resource type.
 ### GitHub Actions (6 tools)
 
 #### `github_list_workflow_runs`
+
 List workflow runs with optional filters (status, branch).
 
 #### `github_get_workflow_run`
+
 Get details of a specific workflow run.
 
 #### `github_list_workflow_jobs`
+
 List all jobs in a workflow run.
 
 #### `github_get_job_logs`
+
 Fetch logs for a specific job.
 
 #### `github_list_workflows`
+
 List all workflows in a repository.
 
 #### `github_get_workflow_run_logs`
+
 Download complete workflow run logs as base64-encoded zip.
 
-**Environment Variable Required:** 
+**Environment Variable Required:**
+
 - `GITHUB_API_KEY` - GitHub Personal Access Token with `repo` and `actions:read` scopes
 
 **Error Handling:** Tools only error when invoked without `GITHUB_API_KEY` set - they do NOT error on server startup.
@@ -341,12 +378,15 @@ Download complete workflow run logs as base64-encoded zip.
 Enable local document search and retrieval for AI coding assistants. Perfect for searching through documentation, codebases, and reference materials.
 
 **Environment Variables:**
+
 - `RAG_DOCS_PATH` - **Required** - Path to directory containing documents to index
 
 **Note:** The index is automatically stored in `.rag-index` folder inside `RAG_DOCS_PATH`. Chunk size (1000) and overlap (200) are sensible defaults.
 
 #### `rag_index_documents`
+
 Index local documents for semantic search:
+
 - Scans directory for supported file types
 - Chunks documents with configurable overlap
 - Builds TF-IDF index for semantic similarity
@@ -354,7 +394,9 @@ Index local documents for semantic search:
 - Supports 30+ file extensions (md, ts, js, py, json, yaml, etc.)
 
 #### `rag_search`
+
 Search indexed documents using semantic similarity:
+
 - TF-IDF based semantic search
 - Returns top-K most relevant chunks
 - Configurable minimum similarity threshold
@@ -362,29 +404,38 @@ Search indexed documents using semantic similarity:
 - **Perfect for finding relevant docs and code examples**
 
 #### `rag_get_context`
+
 Expand context around search results:
+
 - Get more lines before/after a match
 - Useful for understanding surrounding code
 - Configurable expansion range
 
 #### `rag_list_indexed`
+
 List all indexed documents:
+
 - Shows file paths, types, and chunk counts
 - Optional detailed chunk information
 - Index statistics and metadata
 
 #### `rag_clear_index`
+
 Clear the RAG index:
+
 - Requires confirmation flag
 - Removes all indexed documents
 
 #### `rag_status`
+
 Check RAG system status:
+
 - Shows if RAG is enabled
 - Configuration values
 - Index statistics if available
 
 **Example Configuration:**
+
 ```json
 {
   "mcpServers": {
@@ -403,24 +454,31 @@ Check RAG system status:
 ### GitLab CI/CD (7 tools)
 
 #### `gitlab_list_pipelines`
+
 List pipelines for a project with optional filters.
 
 #### `gitlab_get_pipeline`
+
 Get detailed information about a specific pipeline.
 
 #### `gitlab_list_pipeline_jobs`
+
 List all jobs in a pipeline.
 
 #### `gitlab_get_job`
+
 Get details of a specific job including artifacts info.
 
 #### `gitlab_get_job_trace`
+
 Fetch job logs/trace output.
 
 #### `gitlab_list_project_jobs`
+
 List all jobs in a project with filtering.
 
 #### `gitlab_get_pipeline_variables`
+
 Get variables used in a pipeline execution.
 
 ### GitLab API (23 tools)
@@ -428,16 +486,19 @@ Get variables used in a pipeline execution.
 Comprehensive GitLab API integration for groups, projects, issues, and merge requests.
 
 #### Groups
+
 - `gitlab_get_group` - Get group details
 - `gitlab_list_group_subgroups` - List subgroups
 - `gitlab_list_group_projects` - List projects in group
 - `gitlab_list_descendant_groups` - List all nested subgroups
 
 #### Projects
+
 - `gitlab_get_project` - Get project details
 - `gitlab_list_projects` - List accessible projects
 
 #### Issues
+
 - `gitlab_list_issues` - List issues with filters
 - `gitlab_get_issue` - Get issue details
 - `gitlab_create_issue` - Create new issue
@@ -446,6 +507,7 @@ Comprehensive GitLab API integration for groups, projects, issues, and merge req
 - `gitlab_create_issue_note` - Add issue comment
 
 #### Merge Requests
+
 - `gitlab_list_merge_requests` - List MRs with filters
 - `gitlab_get_merge_request` - Get MR details
 - `gitlab_merge_merge_request` - Merge an MR
@@ -455,12 +517,14 @@ Comprehensive GitLab API integration for groups, projects, issues, and merge req
 - `gitlab_approve_merge_request` - Approve MR
 
 #### Global Search
+
 - `gitlab_search_issues_global` - Search issues across all projects
 - `gitlab_search_merge_requests_global` - Search MRs across all projects
 - `gitlab_search_group_issues` - Search issues in a group
 - `gitlab_search_group_merge_requests` - Search MRs in a group
 
 **Environment Variables Required:**
+
 - `GITLAB_API_KEY` - GitLab Personal Access Token or Project Access Token with `read_api` scope
 - `GITLAB_HOST` (optional) - GitLab instance URL (default: `https://gitlab.com` for GitLab.com, or set to your self-hosted instance)
 
@@ -471,6 +535,7 @@ Comprehensive GitLab API integration for groups, projects, issues, and merge req
 Comprehensive GCP integration using Application Default Credentials (ADC). No API keys required - uses your gcloud authentication.
 
 #### Authentication & Configuration (7 tools)
+
 - `gcloud_auth_login` - Authenticate with ADC
 - `gcloud_auth_list` - List authenticated accounts
 - `gcloud_auth_print_access_token` - Generate access token for API calls
@@ -480,57 +545,69 @@ Comprehensive GCP integration using Application Default Credentials (ADC). No AP
 - `gcloud_config_list` - List all configuration
 
 #### Cloud Logging (2 tools)
+
 - `gcloud_logging_read` - Read logs with advanced filtering (time, severity, resource)
 - `gcloud_logging_write` - Write log entries
 
 #### GKE - Google Kubernetes Engine (4 tools)
+
 - `gcloud_container_clusters_list` - List GKE clusters
 - `gcloud_container_clusters_describe` - Get cluster details
 - `gcloud_container_clusters_get_credentials` - Configure kubectl credentials
 - `gcloud_container_node_pools_list` - List node pools
 
 #### BigQuery (4 tools)
+
 - `gcloud_bq_query` - Execute SQL queries with dry-run support
 - `gcloud_bq_ls` - List datasets and tables
 - `gcloud_bq_show` - Show dataset/table details and schema
 - `gcloud_bq_mk` - Create datasets and tables
 
 #### Dataflow (3 tools)
+
 - `gcloud_dataflow_jobs_list` - List Dataflow jobs
 - `gcloud_dataflow_jobs_describe` - Get job details and metrics
 - `gcloud_dataflow_jobs_cancel` - Cancel running jobs
 
 #### Resource Manager (4 tools)
+
 - `gcloud_projects_list` - List all accessible projects
 - `gcloud_projects_describe` - Get project details
 - `gcloud_services_list` - List enabled/available APIs
 - `gcloud_services_enable` - Enable Google Cloud APIs
 
 #### Compute Engine (2 tools)
+
 - `gcloud_compute_instances_list` - List VM instances
 - `gcloud_compute_instances_describe` - Get instance details
 
 #### Cloud Run (2 tools)
+
 - `gcloud_run_services_list` - List Cloud Run services
 - `gcloud_run_services_describe` - Get service details and URLs
 
 #### Cloud Storage (2 tools)
+
 - `gcloud_storage_buckets_list` - List storage buckets
 - `gcloud_storage_ls` - List objects in buckets
 
 #### IAM (2 tools)
+
 - `gcloud_iam_service_accounts_list` - List service accounts
 - `gcloud_iam_service_accounts_keys_create` - Create service account keys
 
 #### Generic Wrapper (1 tool)
+
 - `gcloud_execute` - Execute any gcloud command with proper ADC authentication
 
 **Prerequisites:**
+
 - gcloud CLI installed: `brew install google-cloud-sdk`
 - Authenticated: `gcloud auth application-default login`
 - Project set: `gcloud config set project PROJECT_ID`
 
 **Documentation:**
+
 - [GCP_README.md](GCP_README.md) - Complete overview
 - [GCP_QUICKSTART.md](GCP_QUICKSTART.md) - Setup guide
 - [GCP_TOOLS.md](GCP_TOOLS.md) - All tools reference
@@ -539,7 +616,9 @@ Comprehensive GCP integration using Application Default Credentials (ADC). No AP
 ### **📋 Planning & Requirements (3 tools)**
 
 #### `generate_requirements`
+
 Transform ideas into comprehensive requirements:
+
 - Functional and non-functional requirements
 - User stories with acceptance criteria
 - Technical constraints and success metrics
@@ -547,14 +626,18 @@ Transform ideas into comprehensive requirements:
 - **Complete PRD from a prompt**
 
 #### `create_product_roadmap`
+
 Generate development roadmap:
+
 - Phase breakdown (MVP → Full → Enterprise)
 - Milestones and timelines
 - Feature prioritization
 - **Clear path from idea to launch**
 
 #### `generate_user_stories`
+
 Create detailed user stories:
+
 - Acceptance criteria in Given/When/Then format
 - Priority and story point estimation
 - **Ready for sprint planning**
@@ -562,7 +645,9 @@ Create detailed user stories:
 ### **🔬 Research & Analysis (3 tools)**
 
 #### `analyze_tech_stack`
+
 Recommend optimal technologies:
+
 - Analyze project requirements
 - Recommend frameworks, databases, hosting
 - Provide alternatives with reasoning
@@ -570,7 +655,9 @@ Recommend optimal technologies:
 - **Data-driven technology decisions**
 
 #### `research_best_practices`
+
 Industry best practices database:
+
 - Security patterns (OWASP, authentication)
 - Performance optimization techniques
 - Testing strategies and patterns
@@ -578,7 +665,9 @@ Industry best practices database:
 - **Learn from industry leaders**
 
 #### `competitive_analysis`
+
 Market and competitive intelligence:
+
 - Identify opportunities and threats
 - Differentiation strategies
 - Market positioning recommendations
@@ -587,7 +676,9 @@ Market and competitive intelligence:
 ### **🏗️ Architecture & Design (3 tools)**
 
 #### `design_system_architecture`
+
 Complete system architecture design:
+
 - Layered architecture (Presentation, Application, Data, Infrastructure)
 - Architecture patterns (microservices, event-driven, CQRS)
 - Scalability and security strategies
@@ -595,7 +686,9 @@ Complete system architecture design:
 - **Production-ready architecture from day one**
 
 #### `design_database_schema`
+
 Database schema design:
+
 - Entity modeling with relationships
 - SQL DDL generation
 - Indexes for performance
@@ -603,7 +696,9 @@ Database schema design:
 - **Optimized data layer**
 
 #### `generate_api_spec`
+
 OpenAPI/Swagger specification:
+
 - Complete endpoint definitions
 - Request/response schemas
 - Authentication schemes
@@ -612,7 +707,9 @@ OpenAPI/Swagger specification:
 ### **🔒 Security & Compliance (3 tools)**
 
 #### `security_audit`
+
 Comprehensive security scanning:
+
 - Dependency vulnerability scanning (npm audit)
 - Exposed secrets detection
 - Code security issues (eval, SQL injection, XSS)
@@ -620,7 +717,9 @@ Comprehensive security scanning:
 - **Find vulnerabilities before attackers do**
 
 #### `generate_security_policy`
+
 Security policy documentation:
+
 - Authentication/authorization guidelines
 - Data protection measures
 - Incident response plans
@@ -628,7 +727,9 @@ Security policy documentation:
 - **Enterprise-grade security documentation**
 
 #### `scan_for_vulnerabilities`
+
 Targeted vulnerability scanning:
+
 - SAST (Static Application Security Testing)
 - Dependency checks
 - Secret scanning
@@ -638,7 +739,9 @@ Targeted vulnerability scanning:
 ### **🚀 Deployment & Infrastructure (3 tools)**
 
 #### `generate_dockerfile`
+
 Optimized Docker containers:
+
 - Multi-stage builds for minimal size
 - Security best practices (non-root user)
 - Language-specific optimizations
@@ -646,7 +749,9 @@ Optimized Docker containers:
 - **Production-ready containerization**
 
 #### `generate_cicd_pipeline`
+
 CI/CD automation:
+
 - GitHub Actions / GitLab CI workflows
 - Automated testing and building
 - Security scanning in pipeline
@@ -654,7 +759,9 @@ CI/CD automation:
 - **Zero-touch deployments**
 
 #### `generate_kubernetes_manifests`
+
 Kubernetes deployment configs:
+
 - Deployments with replicas
 - Services and load balancers
 - Ingress with TLS
@@ -667,6 +774,7 @@ Kubernetes deployment configs:
 This server includes comprehensive instructions in `.github/instructions/` that guide AI assistants to:
 
 ### Core Behaviors
+
 1. **Zero Human Intervention** - Operate autonomously by default
 2. **Fix, Don't Report** - Iterate until issues are resolved
 3. **Test Everything** - No untested code ships
@@ -674,6 +782,7 @@ This server includes comprehensive instructions in `.github/instructions/` that 
 5. **Automate Relentlessly** - Scripts for all common tasks
 
 ### Quality Standards
+
 - ✅ All tests must pass
 - ✅ Zero linting errors
 - ✅ Code coverage >80%
@@ -682,6 +791,7 @@ This server includes comprehensive instructions in `.github/instructions/` that 
 - ✅ Production-ready on first ship
 
 ### Workflow Automation
+
 - Auto-run tests after code changes
 - Auto-fix linting issues
 - Auto-update documentation
@@ -763,13 +873,15 @@ For Claude, you may want to update `WORKSPACE_PATH` per project, or use a defaul
 ### For Other MCP Clients
 
 The server uses **stdio transport** (standard for MCP) - configure similarly in:
+
 - Cursor
-- Windsurf  
+- Windsurf
 - Cline
 - Continue
 - Any MCP-compatible client
 
 Same pattern:
+
 - **Main server:** `node /path/to/server/dist/mcp-vibe-coding-tools.js` with optional `WORKSPACE_PATH` env var
 - **GitOps server:** `node /path/to/server/dist/gitops-server.js` with `GITHUB_API_KEY` and/or `GITLAB_API_KEY` env vars
 
@@ -850,6 +962,7 @@ Built with modern MCP SDK:
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
 
 This project follows autonomous development principles:
+
 - All PRs must pass validation
 - Tests required for new features
 - Documentation updated automatically
@@ -862,6 +975,7 @@ MIT - See [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 Built with:
+
 - [Model Context Protocol](https://modelcontextprotocol.io/) - MCP standard
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) - Official SDK
 - Modern development best practices

@@ -2,7 +2,7 @@
 
 ## Sponsors
 
-We are very grateful to our [sponsors](https://github.com/sponsors/oraios), who help us drive Serena's development. 
+We are very grateful to our [sponsors](https://github.com/sponsors/oraios), who help us drive Serena's development.
 The core team (the founders of [Oraios AI](https://oraios-ai.de/)) put in a lot of work in order to turn Serena into a useful open source project.
 So far, there is no business model behind this project, and sponsors are our only source of income from it.
 

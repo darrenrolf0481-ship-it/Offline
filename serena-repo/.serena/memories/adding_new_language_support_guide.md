@@ -7,7 +7,7 @@ This guide explains how to add support for a new programming language to Serena.
 Adding a new language involves:
 
 1. **Language Server Implementation** - Creating a language-specific server class
-2. **Language Registration** - Adding the language to enums and configurations  
+2. **Language Registration** - Adding the language to enums and configurations
 3. **Test Repository** - Creating a minimal test project
 4. **Test Suite** - Writing comprehensive tests
 
@@ -19,19 +19,21 @@ Create a new file in `src/solidlsp/language_servers/` (e.g., `new_language_serve
 
 #### Providing the Launch Command via a DependencyProvider
 
-All language servers use the `DependencyProvider` pattern to handle 
-  * runtime dependency installation/discovery
-  * launch command creation (and, optionally, environment setup)
+All language servers use the `DependencyProvider` pattern to handle
+
+- runtime dependency installation/discovery
+- launch command creation (and, optionally, environment setup)
 
 To implement a new language server using the DependencyProvider pattern:
-  * Pass `None` for `process_launch_info` in `super().__init__()` - the base class creates it via `_create_dependency_provider()`
-  * Implement `_create_dependency_provider()` to return an inner `DependencyProvider` class instance.
-    In simple cases, it can be instantiated with only two parameters: 
-    ```python
-    def _create_dependency_provider(self) -> LanguageServerDependencyProvider:
-         return self.DependencyProvider(self._custom_settings, self._ls_resources_dir)
-    ```
-    The resource dir that is passed is the directory in which installed dependencies should be stored!
+
+- Pass `None` for `process_launch_info` in `super().__init__()` - the base class creates it via `_create_dependency_provider()`
+- Implement `_create_dependency_provider()` to return an inner `DependencyProvider` class instance.
+  In simple cases, it can be instantiated with only two parameters:
+  ```python
+  def _create_dependency_provider(self) -> LanguageServerDependencyProvider:
+       return self.DependencyProvider(self._custom_settings, self._ls_resources_dir)
+  ```
+  The resource dir that is passed is the directory in which installed dependencies should be stored!
 
 **Base Classes:**
 
@@ -46,8 +48,9 @@ To implement a new language server using the DependencyProvider pattern:
   - Reference implementations: `EclipseJDTLS`, `CSharpLanguageServer`, `MatlabLanguageServer`
 
 **Implementation Pointers::**
-  - When returning the command, prefer the list-based representation for robustness
-  - Override `create_launch_command_env` if the launch command needs environment variables to be set (defaults to `{}` in the base implementation)
+
+- When returning the command, prefer the list-based representation for robustness
+- Override `create_launch_command_env` if the launch command needs environment variables to be set (defaults to `{}` in the base implementation)
 
 You should look at at least one existing implementation of each base class to understand how they work.
 
@@ -70,11 +73,11 @@ def _start_server(self):
     """Start the language server with custom handlers."""
     # Set up notification handlers
     self.server.on_notification("window/logMessage", self._handle_log_message)
-    
+
     # Start server and initialize
     self.server.start()
     init_response = self.server.send.initialize(self._get_initialize_params())
-    
+
     self.server.notify.initialized({})
 ```
 
@@ -92,7 +95,7 @@ In `src/solidlsp/ls_config.py`, add your language to the `Language` enum:
 class Language(str, Enum):
     # Existing languages...
     NEW_LANGUAGE = "new_language"
-    
+
     def get_source_fn_matcher(self) -> FilenameMatcher:
         match self:
             # Existing cases...
@@ -139,6 +142,7 @@ Create meaningful source files that demonstrate:
 - **Nested Structures** - For hierarchical symbol testing
 
 Example `main.newlang`:
+
 ```
 import lib.helper
 
@@ -146,7 +150,7 @@ class Calculator {
     func add(a: Int, b: Int) -> Int {
         return a + b
     }
-    
+
     func subtract(a: Int, b: Int) -> Int {
         return helper.subtract(a, b)  // Reference to imported function
     }
@@ -190,7 +194,6 @@ Don't forget to add a new language marker to `pytest.ini`.
 ### 4.2 Integration Tests
 
 Consider adding new cases to the parametrized tests in `test_serena_agent.py` for the new language.
-
 
 ### 5 Documentation
 

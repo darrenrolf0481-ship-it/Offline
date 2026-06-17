@@ -92,62 +92,75 @@ description: One-line description of the agent's specialty and focus
 color: colorname or "#hexcode"
 emoji: 🎯
 vibe: One-line personality hook — what makes this agent memorable
-services:                              # optional — only if the agent requires external services
+services: # optional — only if the agent requires external services
   - name: Service Name
     url: https://service-url.com
-    tier: free                         # free, freemium, or paid
+    tier: free # free, freemium, or paid
 ---
 
 # Agent Name
 
 ## 🧠 Your Identity & Memory
+
 - **Role**: Clear role description
 - **Personality**: Personality traits and communication style
 - **Memory**: What the agent remembers and learns
 - **Experience**: Domain expertise and perspective
 
 ## 🎯 Your Core Mission
+
 - Primary responsibility 1 with clear deliverables
 - Primary responsibility 2 with clear deliverables
 - Primary responsibility 3 with clear deliverables
 - **Default requirement**: Always-on best practices
 
 ## 🚨 Critical Rules You Must Follow
+
 Domain-specific rules and constraints that define the agent's approach
 
 ## 📋 Your Technical Deliverables
+
 Concrete examples of what the agent produces:
+
 - Code samples
 - Templates
 - Frameworks
 - Documents
 
 ## 🔄 Your Workflow Process
+
 Step-by-step process the agent follows:
+
 1. Phase 1: Discovery and research
 2. Phase 2: Planning and strategy
 3. Phase 3: Execution and implementation
 4. Phase 4: Review and optimization
 
 ## 💭 Your Communication Style
+
 - How the agent communicates
 - Example phrases and patterns
 - Tone and approach
 
 ## 🔄 Learning & Memory
+
 What the agent learns from:
+
 - Successful patterns
 - Failed approaches
 - User feedback
 - Domain evolution
 
 ## 🎯 Your Success Metrics
+
 Measurable outcomes:
+
 - Quantitative metrics (with numbers)
 - Qualitative indicators
 - Performance benchmarks
 
 ## 🚀 Advanced Capabilities
+
 Advanced techniques and approaches the agent masters
 ```
 
@@ -157,11 +170,13 @@ Agent files are organized into two semantic groups that map to
 OpenClaw's workspace format and help other tools parse your agent:
 
 #### Persona (who the agent is)
+
 - **Identity & Memory** — role, personality, background
 - **Communication Style** — tone, voice, approach
 - **Critical Rules** — boundaries and constraints
 
 #### Operations (what the agent does)
+
 - **Core Mission** — primary responsibilities
 - **Technical Deliverables** — concrete outputs and templates
 - **Workflow Process** — step-by-step methodology
@@ -213,7 +228,7 @@ those services are essential to the agent's function. When they do:
    The agent file should read like an agent, not a getting-started guide
 4. **Prefer services with free tiers** so contributors can test the agent
 
-The test: *is this agent for the user, or for the vendor?* An agent that
+The test: _is this agent for the user, or for the vendor?_ An agent that
 solves the user's problem using a service belongs here. A service's
 quickstart guide wearing an agent costume does not.
 
@@ -224,6 +239,7 @@ quickstart guide wearing an agent costume does not.
 ### What Makes a Great Agent?
 
 **Great agents have**:
+
 - ✅ Narrow, deep specialization
 - ✅ Distinct personality and voice
 - ✅ Concrete code/template examples
@@ -232,6 +248,7 @@ quickstart guide wearing an agent costume does not.
 - ✅ Real-world testing and iteration
 
 **Avoid**:
+
 - ❌ Generic "helpful assistant" personality
 - ❌ Vague "I will help you with..." descriptions
 - ❌ No code examples or deliverables
@@ -249,11 +266,13 @@ The fastest path to a merged PR is **one markdown file** — a new or improved a
 For anything beyond that, here's how we keep things smooth:
 
 #### Always welcome as a PR
+
 - Adding a new agent (one `.md` file)
 - Improving an existing agent's content, examples, or personality
 - Fixing typos or clarifying docs
 
 #### Start a Discussion first
+
 - New tooling, build systems, or CI workflows
 - Architectural changes (new directories, new scripts, site generators)
 - Changes that touch many files across the repo
@@ -262,6 +281,7 @@ For anything beyond that, here's how we keep things smooth:
 We love ambitious ideas — a [Discussion](https://github.com/msitarzewski/agency-agents/discussions) just gives the community a chance to align on approach before code gets written. It saves everyone time, especially yours.
 
 #### Things we'll always close
+
 - **Committed build output**: Generated files (`_site/`, compiled assets, converted agent files) should never be checked in. Users run `convert.sh` locally; all output is gitignored.
 - **PRs that bulk-modify existing agents** without a prior discussion — even well-intentioned reformatting can create merge conflicts for other contributors.
 
@@ -297,17 +317,21 @@ We love ambitious ideas — a [Discussion](https://github.com/msitarzewski/agenc
 
 ```markdown
 ## Agent Information
+
 **Agent Name**: [Name]
 **Category**: [engineering/design/marketing/etc.]
 **Specialty**: [One-line description]
 
 ## Motivation
+
 [Why is this agent needed? What gap does it fill?]
 
 ## Testing
+
 [How have you tested this agent? Real-world use cases?]
 
 ## Checklist
+
 - [ ] Follows agent template structure
 - [ ] Includes personality and voice
 - [ ] Has concrete code/template examples
@@ -349,9 +373,9 @@ We love ambitious ideas — a [Discussion](https://github.com/msitarzewski/agenc
 // 4. Modern best practices
 
 interface AgentExample {
-  name: string;
-  specialty: string;
-  deliverables: string[];
+name: string;
+specialty: string;
+deliverables: string[];
 }
 \`\`\`
 ```

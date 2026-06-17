@@ -63,11 +63,11 @@ Each agent directory contains:
 version: 1
 agent:
   name: frontend-developer
-  extend: default  # Inherits from Kimi's built-in default agent
+  extend: default # Inherits from Kimi's built-in default agent
   system_prompt_path: ./system.md
   tools:
-    - "kimi_cli.tools.shell:Shell"
-    - "kimi_cli.tools.file:ReadFile"
+    - 'kimi_cli.tools.shell:Shell'
+    - 'kimi_cli.tools.file:ReadFile'
     # ... all default tools
 ```
 

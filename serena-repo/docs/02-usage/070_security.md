@@ -6,27 +6,29 @@ Security is important to us, and we take this topic seriously.
 
 The current security model for Serena assumes:
 
-- the local machine is trusted,  
+- the local machine is trusted,
 - the MCP client (i.e. the LLM) is trusted,
 - the code repository being worked on is trusted,
 - user configuration is trusted,
 - package manager configuration (e.g. npm) for downloading additional dependencies (i.e. language servers when using Serena with the LSP backend) is trusted.
 
 Serena contains tools for executing shell commands and modifying files.
-As such tools are, however, an essential part of coding agent workflows, they typically need to be made available. 
-Therefore, the only way to *fully* protect against unintended consequences is to use a [sandboxed environment](sandboxing) for running Serena.
+As such tools are, however, an essential part of coding agent workflows, they typically need to be made available.
+Therefore, the only way to _fully_ protect against unintended consequences is to use a [sandboxed environment](sandboxing) for running Serena.
 
 ## General Recommendations for Risk Reduction
 
 To reduce the risk of unintended consequences, we recommend that you:
+
 - back up your work regularly (keep the project being worked on under version control),
 - restrict the set of allowed tools via the [configuration](050_configuration),
 - do not expose [Serena's network services](network-security) to untrusted networks.
 
-If you do not fully the trust the client/the LLM, we additionally recommend to monitor tool executions carefully 
+If you do not fully the trust the client/the LLM, we additionally recommend to monitor tool executions carefully
 (provided that your MCP client supports this).
 
 (sandboxing)=
+
 ## Sandboxing
 
 Sandboxing is the most effective way to mitigate risks when using coding agents.
@@ -35,19 +37,21 @@ Sandboxing is the most effective way to mitigate risks when using coding agents.
 While setting up a sandboxed environment may require some initial effort, we highly recommend it for all security-conscious users.
 
 (network-security)=
+
 ## Network Security
 
 Serena includes several network services:
+
 - the Serena MCP server itself (when run in [HTTP or SSE mode](streamable-http) instead of stdio mode)
 - the Serena Dashboard web server
 - the Serena JetBrains Plugin server, which runs within the JetBrains IDE (when using the JetBrains language backend)
-- the Serena Project Server (only started explicitly for [project querying](query-projects)) 
+- the Serena Project Server (only started explicitly for [project querying](query-projects))
 
 By default, these services accept connections from localhost only, which is a secure default for most users
 (given our assumption that the local machine is trusted; see above).
 
 These services can be reconfigured to listen on other addresses, but doing so may have security implications.
-If you need to allow connections from other machines, we recommend that you set up a secure networking environment 
+If you need to allow connections from other machines, we recommend that you set up a secure networking environment
 (e.g. using a VPN or SSH tunnels) and ensure that only trusted machines can connect to these services.
 
 ## Supply Chain Security
@@ -58,7 +62,7 @@ Serena has two language backends with different security characteristics:
 - the language-server-based variant (the free variant), which can automatically acquire language server dependencies on demand.
 
 While we can assume that JetBrains IDEs installed by the user do not pose a security risk,
-language server dependencies (if not handled with care) could. 
+language server dependencies (if not handled with care) could.
 For convenience, Serena downloads or installs certain language server dependencies on demand.
 We treat this path as security-sensitive and have hardened it accordingly.
 

@@ -27,7 +27,7 @@ export interface GitCommit {
   message: string;
   timestamp: number;
   author: string;
-  files: { id: string, content: string }[];
+  files: { id: string; content: string }[];
 }
 
 export interface GitState {
@@ -78,7 +78,7 @@ export interface Project {
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   text: string;
-  attachments?: { name: string, content: string }[];
+  attachments?: { name: string; content: string }[];
 }
 
 export interface ChatSession {

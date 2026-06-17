@@ -28,7 +28,7 @@ We designed an evaluation methodology with three goals:
    simply uses them and reports what it observes.
 
 3. **Comprehensive and unbiased by design.**
-   Rather than selecting specific tasks, the prompt defines *task categories* that systematically
+   Rather than selecting specific tasks, the prompt defines _task categories_ that systematically
    span Serena's capabilities: codebase understanding, single-file edits of varying sizes, multi-file
    refactoring, reliability properties, and workflow effects. The agent picks concrete instances
    from the codebase at hand, performs each task using both toolsets side by side, and classifies
@@ -53,9 +53,9 @@ payload sizes and prerequisite steps. Edits are reverted after each experiment t
 
 The resulting report classifies each finding into one of three categories:
 
-* **(a)** tasks where Serena adds capability,
-* **(b)** tasks where Serena applies but offers no improvement, and
-* **(c)** tasks outside Serena's scope.
+- **(a)** tasks where Serena adds capability,
+- **(b)** tasks where Serena applies but offers no improvement, and
+- **(c)** tasks outside Serena's scope.
 
 Only category (b) constitutes a neutral or negative finding; category (c) is context, not a finding.
 
@@ -116,17 +116,19 @@ We put significant effort into crafting an unbiased, fair evaluation prompt.
 To assess the prompt's fairness, we asked Claude Opus 4.6 to evaluate the prompt itself.
 
 **Prompt**:
-> The attached prompt is designed to evaluate the additive value of Serena as an augmentation layer on top of built-in tools 
-> (not to compare two competing alternatives). 
-> Is the methodology suitable for that goal, or does it introduce bias that would distort the measurement of what Serena adds? 
-> Note that we assume that sufficiently intelligent models use the tools correctly, 
-> which is why misuse and failure modes are out of scope for this evaluation. 
-> Do not question the validity of this assumption in your evaluation of the prompt. 
+
+> The attached prompt is designed to evaluate the additive value of Serena as an augmentation layer on top of built-in tools
+> (not to compare two competing alternatives).
+> Is the methodology suitable for that goal, or does it introduce bias that would distort the measurement of what Serena adds?
+> Note that we assume that sufficiently intelligent models use the tools correctly,
+> which is why misuse and failure modes are out of scope for this evaluation.
+> Do not question the validity of this assumption in your evaluation of the prompt.
 > Give a brief answer, maximally two sentences.
-> 
+>
 > \<evaluation prompt pasted here\>
 
 **Claude Opus' Answer**:
+
 > "The methodology is well-suited to its stated goal: by explicitly scoping to correct use, treating Serena as an
 > augmentation layer rather than a competitor, and classifying out-of-scope tasks as context rather than negative
 > findings, it avoids the most common biases that would distort a delta measurement. The one risk is that the "correct-use
@@ -136,7 +138,6 @@ To assess the prompt's fairness, we asked Claude Opus 4.6 to evaluate the prompt
 
 According to Claude, the only "biased" aspects are some sentences about misuse of tools, which we consider irrelevant for the purpose of evaluation
 (sufficiently intelligent models use the tools correctly).
-
 
 ## Why Not Benchmarks?
 
@@ -153,7 +154,7 @@ but they are a poor fit for evaluating a **tool augmentation layer** like Serena
 - **Results would not generalise to the user's project.** Serena's value depends on the codebase
   (size, language, complexity), the agent (model, built-in tools), and the client harness
   (Claude Code, Codex, IDE plugins, etc.). A fixed benchmark on a fixed codebase with a fixed
-  agent tells you little about what Serena would add to *your* setup.
+  agent tells you little about what Serena would add to _your_ setup.
 - **Predefined tasks bias the measurement.** Choosing specific tasks to evaluate inevitably
   introduces selection bias — we would end up picking tasks that either favour or disfavour Serena.
   We wanted an evaluation that systematically covers the full surface area of Serena's capabilities

@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { gcpTools } from "./tools/gcp.js";
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { gcpTools } from './tools/gcp.js';
 
 // Create MCP server for Google Cloud Platform operations
 const server = new McpServer(
   {
-    name: "mcp-gcloud-tools",
-    version: "1.0.0",
+    name: 'mcp-gcloud-tools',
+    version: '1.0.0',
   },
   {
     capabilities: {
@@ -36,10 +36,10 @@ for (const tool of allTools) {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("MCP Google Cloud Tools server running on stdio");
+  console.error('MCP Google Cloud Tools server running on stdio');
 }
 
 main().catch((error) => {
-  console.error("Fatal error:", error);
+  console.error('Fatal error:', error);
   process.exit(1);
 });

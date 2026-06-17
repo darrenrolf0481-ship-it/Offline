@@ -1,5 +1,5 @@
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import {baseUrl} from "@/pages/api/apiConfig";
+import { baseUrl } from '@/pages/api/apiConfig';
 
 export const formatTime = (lastExecutionTime) => {
   try {
@@ -34,7 +34,6 @@ export const formatNumber = (number) => {
   return scaledNumber.toFixed(1) + suffix;
 };
 
-
 export const formatBytes = (bytes, decimals = 2) => {
   if (bytes === 0) {
     return '0 Bytes';
@@ -46,11 +45,11 @@ export const formatBytes = (bytes, decimals = 2) => {
   const formattedValue = parseFloat((bytes / Math.pow(k, i)).toFixed(decimals));
 
   return `${formattedValue} ${sizes[i]}`;
-}
+};
 
-export const  downloadFile = (fileId) => {
+export const downloadFile = (fileId) => {
   window.open(`${baseUrl()}/resources/get/${fileId}`, '_blank');
-}
+};
 
 export const refreshUrl = () => {
   if (typeof window === 'undefined') {

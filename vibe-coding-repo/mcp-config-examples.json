@@ -11,9 +11,7 @@
         "mcpServers": {
           "gcloud-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
-            ]
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"]
           }
         }
       },
@@ -21,18 +19,14 @@
         "mcpServers": {
           "vibe-coding-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/mcp-vibe-coding-tools.js"
-            ],
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/mcp-vibe-coding-tools.js"],
             "env": {
               "WORKSPACE_PATH": "/path/to/your/workspace"
             }
           },
           "gitops-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gitops-server.js"
-            ],
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gitops-server.js"],
             "env": {
               "GITHUB_API_KEY": "your-github-token",
               "GITLAB_API_KEY": "your-gitlab-token"
@@ -40,9 +34,7 @@
           },
           "gcloud-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
-            ]
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"]
           }
         }
       },
@@ -50,9 +42,7 @@
         "mcpServers": {
           "gcloud-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
-            ],
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"],
             "env": {
               "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/service-account-key.json",
               "CLOUDSDK_CORE_PROJECT": "my-project-id",
@@ -70,9 +60,7 @@
         "mcpServers": {
           "gcloud-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
-            ]
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"]
           }
         }
       },
@@ -80,18 +68,14 @@
         "mcpServers": {
           "vibe-coding-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/mcp-vibe-coding-tools.js"
-            ],
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/mcp-vibe-coding-tools.js"],
             "env": {
               "WORKSPACE_PATH": "/path/to/your/workspace"
             }
           },
           "gitops-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gitops-server.js"
-            ],
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gitops-server.js"],
             "env": {
               "GITHUB_API_KEY": "your-github-token",
               "GITLAB_API_KEY": "your-gitlab-token"
@@ -99,9 +83,7 @@
           },
           "gcloud-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
-            ]
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"]
           }
         }
       }
@@ -113,9 +95,7 @@
         "mcpServers": {
           "gcloud-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
-            ]
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"]
           }
         }
       },
@@ -123,18 +103,14 @@
         "mcpServers": {
           "vibe-coding-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/mcp-vibe-coding-tools.js"
-            ],
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/mcp-vibe-coding-tools.js"],
             "env": {
               "WORKSPACE_PATH": "/path/to/your/workspace"
             }
           },
           "gitops-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gitops-server.js"
-            ],
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gitops-server.js"],
             "env": {
               "GITHUB_API_KEY": "your-github-token",
               "GITLAB_API_KEY": "your-gitlab-token"
@@ -142,9 +118,7 @@
           },
           "gcloud-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
-            ]
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"]
           }
         }
       }
@@ -156,9 +130,7 @@
         "cline.mcpServers": {
           "gcloud-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
-            ]
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"]
           }
         }
       },
@@ -166,18 +138,14 @@
         "cline.mcpServers": {
           "vibe-coding-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/mcp-vibe-coding-tools.js"
-            ],
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/mcp-vibe-coding-tools.js"],
             "env": {
               "WORKSPACE_PATH": "/path/to/your/workspace"
             }
           },
           "gitops-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gitops-server.js"
-            ],
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gitops-server.js"],
             "env": {
               "GITHUB_API_KEY": "your-github-token",
               "GITLAB_API_KEY": "your-gitlab-token"
@@ -185,9 +153,7 @@
           },
           "gcloud-tools": {
             "command": "node",
-            "args": [
-              "/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"
-            ]
+            "args": ["/absolute/path/to/mcp-vibe-coding-tools/dist/gcloud-server.js"]
           }
         }
       }

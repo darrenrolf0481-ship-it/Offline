@@ -4,27 +4,31 @@
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "module": "ESNext",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./*"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["node_modules", "**/test/**", "**/test_repo/**", "github-mcp-repo", "agency-agents-repo", "serena-repo", "my-SuperAGI", "vibe-coding-repo", "mcp-test.ts", "mcp-test-stdio.ts", "mcp-github-adapter.ts"]
+  "exclude": [
+    "node_modules",
+    "**/test/**",
+    "**/test_repo/**",
+    "github-mcp-repo",
+    "agency-agents-repo",
+    "serena-repo",
+    "my-SuperAGI",
+    "vibe-coding-repo",
+    "mcp-test.ts",
+    "mcp-test-stdio.ts",
+    "mcp-github-adapter.ts"
+  ]
 }

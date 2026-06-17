@@ -3,9 +3,7 @@
     "mcp-vibe-coding-tools": {
       "type": "stdio",
       "command": "node",
-      "args": [
-        "/path/to/mcp-vibe-coding-tools/dist/index.js"
-      ],
+      "args": ["/path/to/mcp-vibe-coding-tools/dist/index.js"],
       "env": {
         "RAG_DOCS_PATH": "/path/to/docs-to-search",
         "GITHUB_API_KEY": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",

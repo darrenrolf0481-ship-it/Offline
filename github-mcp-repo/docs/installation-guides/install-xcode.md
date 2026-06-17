@@ -6,9 +6,9 @@ Xcode currently supports two built-in coding agents: **Codex** (powered by OpenA
 
 ## Configuration Directories
 
-| Agent | Configuration Directory |
-|-------|------------------------|
-| Codex | `~/Library/Developer/Xcode/CodingAssistant/codex/` |
+| Agent        | Configuration Directory                                        |
+| ------------ | -------------------------------------------------------------- |
+| Codex        | `~/Library/Developer/Xcode/CodingAssistant/codex/`             |
 | Claude Agent | `~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/` |
 
 Place your MCP server configuration in the relevant directory above rather than the default location used by the standalone CLI.
@@ -22,21 +22,21 @@ Place your MCP server configuration in the relevant directory above rather than 
 
 Xcode runs with a minimal `PATH` that typically excludes common binary locations. If you are using a local STDIO server (e.g. Docker or a pre-built binary), use the **full path** to the command in your config. Run `which docker` (or `which github-mcp-server`) in Terminal to find the correct path on your system. Common locations:
 
-| Installation | Typical path |
-|---|---|
-| Docker (Intel Mac) | `/usr/local/bin/docker` |
-| Docker (Apple Silicon) | `/usr/local/bin/docker` |
-| Homebrew (Intel Mac) | `/usr/local/bin/` |
-| Homebrew (Apple Silicon) | `/opt/homebrew/bin/` |
+| Installation             | Typical path            |
+| ------------------------ | ----------------------- |
+| Docker (Intel Mac)       | `/usr/local/bin/docker` |
+| Docker (Apple Silicon)   | `/usr/local/bin/docker` |
+| Homebrew (Intel Mac)     | `/usr/local/bin/`       |
+| Homebrew (Apple Silicon) | `/opt/homebrew/bin/`    |
 
 ## Troubleshooting
 
-| Issue | Possible Cause | Fix |
-|-------|----------------|-----|
-| Tools not loading | Config placed in wrong directory | Ensure config is in the Xcode-specific path above, not `~/.codex/` or `~/.claude.json` |
+| Issue                     | Possible Cause                        | Fix                                                                                                                       |
+| ------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Tools not loading         | Config placed in wrong directory      | Ensure config is in the Xcode-specific path above, not `~/.codex/` or `~/.claude.json`                                    |
 | Command not found (STDIO) | Xcode's PATH excludes binary location | Use the full path (e.g. `/usr/local/bin/docker` or `/opt/homebrew/bin/docker`); run `which docker` in Terminal to confirm |
-| Docker not found | Docker not running | Start Docker Desktop and restart Xcode |
-| Authentication failed | Invalid or expired PAT | Regenerate PAT and update config |
+| Docker not found          | Docker not running                    | Start Docker Desktop and restart Xcode                                                                                    |
+| Authentication failed     | Invalid or expired PAT                | Regenerate PAT and update config                                                                                          |
 
 ## References
 

@@ -1,15 +1,15 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styles from './Agents.module.css';
-import {getExecutionFeeds} from "@/pages/api/DashboardService";
-import Image from "next/image";
-import {formatTime} from "@/utils/utils";
-import {EventBus} from "@/utils/eventBus";
+import { getExecutionFeeds } from '@/pages/api/DashboardService';
+import Image from 'next/image';
+import { formatTime } from '@/utils/utils';
+import { EventBus } from '@/utils/eventBus';
 
-export default function ActivityFeed({selectedRunId}) {
-  const [loadingText, setLoadingText] = useState("Thinking");
+export default function ActivityFeed({ selectedRunId }) {
+  const [loadingText, setLoadingText] = useState('Thinking');
   const [feeds, setFeeds] = useState([]);
   const feedContainerRef = useRef(null);
-  const [runStatus, setRunStatus] = useState("CREATED");
+  const [runStatus, setRunStatus] = useState('CREATED');
   const [prevFeedsLength, setPrevFeedsLength] = useState(0);
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export default function ActivityFeed({selectedRunId}) {
   }, []);
 
   useEffect(() => {
-    const interval = window.setInterval(function(){
+    const interval = window.setInterval(function () {
       fetchFeeds();
     }, 10000);
 
@@ -36,7 +36,10 @@ export default function ActivityFeed({selectedRunId}) {
     if (feeds.length !== prevFeedsLength) {
       if (feedContainerRef.current) {
         setTimeout(() => {
-          feedContainerRef.current.scrollTo({ top: feedContainerRef.current.scrollHeight, behavior: 'smooth' });
+          feedContainerRef.current.scrollTo({
+            top: feedContainerRef.current.scrollHeight,
+            behavior: 'smooth',
+          });
           setPrevFeedsLength(feeds.length);
         }, 100);
       }
@@ -45,11 +48,11 @@ export default function ActivityFeed({selectedRunId}) {
 
   useEffect(() => {
     fetchFeeds();
-  }, [selectedRunId])
+  }, [selectedRunId]);
 
   useEffect(() => {
     EventBus.emit('reFetchAgents', {});
-  }, [runStatus])
+  }, [runStatus]);
 
   function fetchFeeds() {
     getExecutionFeeds(selectedRunId)
@@ -65,7 +68,7 @@ export default function ActivityFeed({selectedRunId}) {
 
   useEffect(() => {
     const updateRunStatus = (eventData) => {
-      if(eventData.selectedRunId === selectedRunId) {
+      if (eventData.selectedRunId === selectedRunId) {
         setRunStatus(eventData.status);
       }
     };
@@ -77,48 +80,83 @@ export default function ActivityFeed({selectedRunId}) {
     };
   });
 
-  return (<>
-    <div style={{overflowY: "auto",maxHeight:'80vh'}} ref={feedContainerRef}>
-      <div style={{marginBottom:'140px'}}>
-        {feeds && feeds.map((f, index) => (<div key={index} className={styles.history_box} style={{background:'#272335',padding:'20px',cursor:'default'}}>
-          <div style={{display:'flex'}}>
-            {f.role === 'user' && <div className={styles.feed_icon}>💁</div>}
-            {f.role === 'system' && <div className={styles.feed_icon}>🛠️ </div>}
-            {f.role === 'assistant' && <div className={styles.feed_icon}>💡</div>}
-            <div className={styles.feed_title}>{f?.feed || ''}</div>
-          </div>
-          <div className={styles.more_details_wrapper}>
-            {f.updated_at && formatTime(f.updated_at) !== 'Invalid Time' && <div className={styles.more_details}>
-              <div style={{display: 'flex', alignItems: 'center'}}>
-                <div>
-                  <Image width={12} height={12} src="/images/schedule.svg" alt="schedule-icon"/>
+  return (
+    <>
+      <div style={{ overflowY: 'auto', maxHeight: '80vh' }} ref={feedContainerRef}>
+        <div style={{ marginBottom: '140px' }}>
+          {feeds &&
+            feeds.map((f, index) => (
+              <div
+                key={index}
+                className={styles.history_box}
+                style={{ background: '#272335', padding: '20px', cursor: 'default' }}
+              >
+                <div style={{ display: 'flex' }}>
+                  {f.role === 'user' && <div className={styles.feed_icon}>💁</div>}
+                  {f.role === 'system' && <div className={styles.feed_icon}>🛠️ </div>}
+                  {f.role === 'assistant' && <div className={styles.feed_icon}>💡</div>}
+                  <div className={styles.feed_title}>{f?.feed || ''}</div>
                 </div>
-                <div className={styles.history_info}>
-                  {formatTime(f.updated_at)}
+                <div className={styles.more_details_wrapper}>
+                  {f.updated_at && formatTime(f.updated_at) !== 'Invalid Time' && (
+                    <div className={styles.more_details}>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <div>
+                          <Image
+                            width={12}
+                            height={12}
+                            src="/images/schedule.svg"
+                            alt="schedule-icon"
+                          />
+                        </div>
+                        <div className={styles.history_info}>{formatTime(f.updated_at)}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>}
-          </div>
-        </div>))}
-        {runStatus === 'RUNNING' && <div className={styles.history_box} style={{background: '#272335', padding: '20px', cursor: 'default'}}>
-          <div style={{display: 'flex'}}>
-            <div style={{fontSize: '20px'}}>🧠</div>
-            <div className={styles.feed_title}><i>{loadingText}</i></div>
-          </div>
-        </div>}
-        {runStatus === 'COMPLETED' && <div className={styles.history_box} style={{background: '#272335', padding: '20px', cursor: 'default'}}>
-          <div style={{display: 'flex'}}>
-            <div style={{fontSize: '20px'}}>🏁</div>
-            <div className={styles.feed_title}><i>All goals completed successfully!</i></div>
-          </div>
-        </div>}
-        {runStatus === 'ITERATION_LIMIT_EXCEEDED' && <div className={styles.history_box} style={{background: '#272335', padding: '20px', cursor: 'default'}}>
-          <div style={{display: 'flex'}}>
-            <div style={{fontSize: '20px'}}>⚠️</div>
-            <div className={styles.feed_title}><i>Stopped: Maximum iterations exceeded!</i></div>
-          </div>
-        </div>}
+            ))}
+          {runStatus === 'RUNNING' && (
+            <div
+              className={styles.history_box}
+              style={{ background: '#272335', padding: '20px', cursor: 'default' }}
+            >
+              <div style={{ display: 'flex' }}>
+                <div style={{ fontSize: '20px' }}>🧠</div>
+                <div className={styles.feed_title}>
+                  <i>{loadingText}</i>
+                </div>
+              </div>
+            </div>
+          )}
+          {runStatus === 'COMPLETED' && (
+            <div
+              className={styles.history_box}
+              style={{ background: '#272335', padding: '20px', cursor: 'default' }}
+            >
+              <div style={{ display: 'flex' }}>
+                <div style={{ fontSize: '20px' }}>🏁</div>
+                <div className={styles.feed_title}>
+                  <i>All goals completed successfully!</i>
+                </div>
+              </div>
+            </div>
+          )}
+          {runStatus === 'ITERATION_LIMIT_EXCEEDED' && (
+            <div
+              className={styles.history_box}
+              style={{ background: '#272335', padding: '20px', cursor: 'default' }}
+            >
+              <div style={{ display: 'flex' }}>
+                <div style={{ fontSize: '20px' }}>⚠️</div>
+                <div className={styles.feed_title}>
+                  <i>Stopped: Maximum iterations exceeded!</i>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  </>)
+    </>
+  );
 }

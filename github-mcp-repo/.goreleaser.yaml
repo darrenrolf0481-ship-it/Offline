@@ -35,10 +35,10 @@ changelog:
   sort: asc
   filters:
     exclude:
-      - "^docs:"
-      - "^test:"
+      - '^docs:'
+      - '^test:'
 
 release:
   draft: true
   prerelease: auto
-  name_template: "GitHub MCP Server {{.Version}}"
+  name_template: 'GitHub MCP Server {{.Version}}'

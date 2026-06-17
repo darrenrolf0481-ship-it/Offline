@@ -16,6 +16,7 @@
 Serena adds three categories of capability on top of built-in tools:
 
 **(a) Tasks where Serena adds capability:**
+
 - **Move symbol between modules** (with automatic import updates) — no built-in equivalent.
 - **Move file/package** (with automatic import updates) — no built-in equivalent.
 - **Type hierarchy traversal** — transitive supertype/subtype chains in 1 call, including into external dependencies. No built-in equivalent.
@@ -26,19 +27,21 @@ Serena adds three categories of capability on top of built-in tools:
 - **Scope-precise symbol targeting** — name paths like `AsyncCollector/_collect` disambiguate overrides that text search cannot distinguish.
 
 **(b) Tasks where Serena applies but offers no meaningful improvement:**
+
 - **Cross-file rename** — both Serena (`rename`) and built-in (`rename_element`) perform semantic, cross-file renames in 1 call. Functionally equivalent.
 - **Single-file rename** — same as above; both are 1-call semantic renames.
 - **Structural overview of a single file** — both toolsets produce comparable results in 1 call.
 - **Small edits (1-3 lines)** — Serena's `replace_symbol_body` must send the entire method body; built-in `search_replace` sends only the changed line. Built-in is more token-efficient here.
 
 **(c) Tasks outside Serena's scope (built-in only):**
+
 - Reading non-code files (configs, docs, changelogs)
 - Free-text search across the repo (log strings, URLs, magic constants)
 - Terminal commands, test execution, git operations
 - Creating new files from scratch
 - Repository-level directory listing
 
-**Verdict:** 
+**Verdict:**
 Serena's primary contribution is move-refactoring (symbol and file moves with import updates), semantic code navigation (type hierarchy, dependency lookup), and safe/propagated delete — capabilities with no built-in equivalent.
 
 ---
@@ -69,12 +72,12 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Get structural overview of `collector.py` (1552 lines, 15+ classes).
 
-| Axis | Serena (`get_symbols_overview`) | Built-in (`get_file_structure`) |
-|------|------|------|
-| Calls | 1 | 1 |
-| Output | JSON tree: class names, method names, field names | Flat list: class/method names with line ranges and signatures |
-| Unique info | Field/attribute names | Line numbers, full parameter signatures |
-| Follow-up to read a method | `find_symbol` by name path (1 call) | `open` at line number (1 call) |
+| Axis                       | Serena (`get_symbols_overview`)                   | Built-in (`get_file_structure`)                               |
+| -------------------------- | ------------------------------------------------- | ------------------------------------------------------------- |
+| Calls                      | 1                                                 | 1                                                             |
+| Output                     | JSON tree: class names, method names, field names | Flat list: class/method names with line ranges and signatures |
+| Unique info                | Field/attribute names                             | Line numbers, full parameter signatures                       |
+| Follow-up to read a method | `find_symbol` by name path (1 call)               | `open` at line number (1 call)                                |
 
 **Verdict:** Functionally equivalent; each includes information the other omits. No meaningful delta.
 
@@ -82,11 +85,11 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Retrieve body of `CollectStats/refresh_all_sequence_stats` without reading surrounding file.
 
-| Axis | Serena | Built-in |
-|------|------|------|
-| Calls | 1 (`find_symbol` with `include_body`) | 2 (`get_file_structure` + `open`) |
-| Prerequisite | None (name path is stable) | Must know line number |
-| Output payload | 4 lines (exact method body) | 100 lines (open window) |
+| Axis           | Serena                                | Built-in                          |
+| -------------- | ------------------------------------- | --------------------------------- |
+| Calls          | 1 (`find_symbol` with `include_body`) | 2 (`get_file_structure` + `open`) |
+| Prerequisite   | None (name path is stable)            | Must know line number             |
+| Output payload | 4 lines (exact method body)           | 100 lines (open window)           |
 
 **Verdict:** Serena saves 1 call and returns a smaller, more precise payload. Minor but consistent advantage.
 
@@ -94,12 +97,12 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Find all references to `CollectStats` across the codebase.
 
-| Axis | Serena (`find_referencing_symbols`) | Built-in (`search_project`) |
-|------|------|------|
-| Calls | 1 | 1 |
-| Output | Summarized narrative: grouped by file, annotated with context (imports, instantiations, type hints) | Raw list: 100+ text matches, includes docs, comments, strings |
-| Precision | Code references only | All text mentions |
-| Recall | Code references only | Everything including non-code |
+| Axis      | Serena (`find_referencing_symbols`)                                                                 | Built-in (`search_project`)                                   |
+| --------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Calls     | 1                                                                                                   | 1                                                             |
+| Output    | Summarized narrative: grouped by file, annotated with context (imports, instantiations, type hints) | Raw list: 100+ text matches, includes docs, comments, strings |
+| Precision | Code references only                                                                                | All text mentions                                             |
+| Recall    | Code references only                                                                                | Everything including non-code                                 |
 
 **Verdict:** Serena provides higher precision (code-only references with semantic context). Built-in provides higher recall (includes docs, comments). Different tools for different questions.
 
@@ -107,11 +110,11 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Full type hierarchy of `BaseCollector` — supertypes and subtypes, transitively.
 
-| Axis | Serena (`type_hierarchy`) | Built-in |
-|------|------|------|
-| Calls | 1 | 3+ (grep for class declarations, read each, trace manually) |
-| Result | `BaseCollector → ABC → object` (up), `→ Collector → AsyncCollector` (down) | Partial: can find direct subclasses by grep, but supertypes of supertypes require reading external files |
-| External deps | Included (ABC from `abc` module, object from `builtins`) | Not accessible |
+| Axis          | Serena (`type_hierarchy`)                                                  | Built-in                                                                                                 |
+| ------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Calls         | 1                                                                          | 3+ (grep for class declarations, read each, trace manually)                                              |
+| Result        | `BaseCollector → ABC → object` (up), `→ Collector → AsyncCollector` (down) | Partial: can find direct subclasses by grep, but supertypes of supertypes require reading external files |
+| External deps | Included (ABC from `abc` module, object from `builtins`)                   | Not accessible                                                                                           |
 
 **Verdict:** Unique capability. No practical built-in equivalent for transitive hierarchy, especially into dependencies.
 
@@ -119,11 +122,11 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Find `Distribution` class from `torch.distributions`.
 
-| Axis | Serena (`find_symbol` with `search_deps`) | Built-in |
-|------|------|------|
-| Calls | 1 | Not possible without manual site-packages navigation |
-| Result | Found 41 `Distribution` classes across all installed packages with ext-identifiers | N/A |
-| Follow-up | Can use ext-identifier to read body/info | Would need to find virtualenv path, navigate to package, read file |
+| Axis      | Serena (`find_symbol` with `search_deps`)                                          | Built-in                                                           |
+| --------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Calls     | 1                                                                                  | Not possible without manual site-packages navigation               |
+| Result    | Found 41 `Distribution` classes across all installed packages with ext-identifiers | N/A                                                                |
+| Follow-up | Can use ext-identifier to read body/info                                           | Would need to find virtualenv path, navigate to package, read file |
 
 **Verdict:** Unique capability. Built-ins have no access to dependency source code without manual path discovery.
 
@@ -131,11 +134,11 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Change error message in `_validate_buffer` (21-line method).
 
-| Axis | Serena | Built-in |
-|------|------|------|
-| Calls | 2 (`find_symbol` + `replace_symbol_body`) | 1 (`search_replace`) |
-| Input payload | ~21 lines (full method body) | ~1 line (search) + ~1 line (replace) |
-| Prerequisite reads | 1 (find_symbol to get current body) | 0 (if search string is known) |
+| Axis               | Serena                                    | Built-in                             |
+| ------------------ | ----------------------------------------- | ------------------------------------ |
+| Calls              | 2 (`find_symbol` + `replace_symbol_body`) | 1 (`search_replace`)                 |
+| Input payload      | ~21 lines (full method body)              | ~1 line (search) + ~1 line (replace) |
+| Prerequisite reads | 1 (find_symbol to get current body)       | 0 (if search string is known)        |
 
 **Verdict:** Built-in is more efficient for small, targeted edits. Serena's method-granularity addressing forces sending the entire body.
 
@@ -143,11 +146,11 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Rewrite `update_at_step_batch` (20 lines), changing variable names and adding logging.
 
-| Axis | Serena | Built-in |
-|------|------|------|
-| Calls | 2 (`find_symbol` + `replace_symbol_body`) | 1 (`search_replace` with old body → new body) |
-| Input payload | ~20 lines (new body) | ~40 lines (old + new body) |
-| Prerequisite reads | 1 (find_symbol) | 1 (open to see current code) |
+| Axis               | Serena                                    | Built-in                                      |
+| ------------------ | ----------------------------------------- | --------------------------------------------- |
+| Calls              | 2 (`find_symbol` + `replace_symbol_body`) | 1 (`search_replace` with old body → new body) |
+| Input payload      | ~20 lines (new body)                      | ~40 lines (old + new body)                    |
+| Prerequisite reads | 1 (find_symbol)                           | 1 (open to see current code)                  |
 
 **Verdict:** Comparable. Serena sends less payload (new body only vs. old+new), but requires a prerequisite find_symbol call.
 
@@ -155,11 +158,11 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Insert `summary_string` method after `refresh_all_sequence_stats` in `CollectStats`.
 
-| Axis | Serena (`insert_after_symbol`) | Built-in (`search_replace`) |
-|------|------|------|
-| Calls | 1 | 1-2 (need to find anchor text, then insert) |
-| Addressing | By name path (stable) | By text anchor or line number (fragile) |
-| Prerequisite | None | May need `open` to find insertion point |
+| Axis         | Serena (`insert_after_symbol`) | Built-in (`search_replace`)                 |
+| ------------ | ------------------------------ | ------------------------------------------- |
+| Calls        | 1                              | 1-2 (need to find anchor text, then insert) |
+| Addressing   | By name path (stable)          | By text anchor or line number (fragile)     |
+| Prerequisite | None                           | May need `open` to find insertion point     |
 
 **Verdict:** Serena's stable addressing is a minor advantage — eliminates the need to find an anchor.
 
@@ -167,9 +170,9 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Rename `_nullable_slice` → `_slice_if_not_none` (5 occurrences in 1 file).
 
-| Axis | Serena (`rename`) | Built-in (`rename_element`) |
-|------|------|------|
-| Calls | 1 | 1 |
+| Axis  | Serena (`rename`)               | Built-in (`rename_element`)     |
+| ----- | ------------------------------- | ------------------------------- |
+| Calls | 1                               | 1                               |
 | Scope | Semantic (only code references) | Semantic (only code references) |
 
 **Verdict:** Functionally equivalent. Both perform semantic renames in 1 call.
@@ -178,12 +181,12 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Rename `CollectStatsBase` → `CollectStatsFoundation` (used in 4 files, 10 occurrences including imports and `__all__`).
 
-| Axis | Serena (`rename`) | Built-in (`rename_element`) |
-|------|------|------|
-| Calls | 1 | 1 |
-| Atomicity | All-or-nothing | All-or-nothing |
-| Import handling | Automatic | Automatic |
-| Result | 4 files, 10 replacements | 4 files, 10 replacements |
+| Axis            | Serena (`rename`)        | Built-in (`rename_element`) |
+| --------------- | ------------------------ | --------------------------- |
+| Calls           | 1                        | 1                           |
+| Atomicity       | All-or-nothing           | All-or-nothing              |
+| Import handling | Automatic                | Automatic                   |
+| Result          | 4 files, 10 replacements | 4 files, 10 replacements    |
 
 **Verdict:** No delta. Both toolsets provide atomic, semantic cross-file rename in a single call.
 
@@ -191,12 +194,12 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Move `get_stddev_from_dist` from `collector.py` to `stats.py`.
 
-| Axis | Serena (`move`) | Built-in |
-|------|------|------|
-| Calls | 1 | ~7 (read source, copy to target, delete from source, find imports, update each import, verify) |
-| Files modified | 3 (source, target, test file) | Same 3, but manually |
-| Import updates | Automatic | Manual |
-| Atomicity | Atomic | Non-atomic |
+| Axis           | Serena (`move`)               | Built-in                                                                                       |
+| -------------- | ----------------------------- | ---------------------------------------------------------------------------------------------- |
+| Calls          | 1                             | ~7 (read source, copy to target, delete from source, find imports, update each import, verify) |
+| Files modified | 3 (source, target, test file) | Same 3, but manually                                                                           |
+| Import updates | Automatic                     | Manual                                                                                         |
+| Atomicity      | Atomic                        | Non-atomic                                                                                     |
 
 **Verdict:** Unique capability at this level of automation. No practical built-in equivalent at comparable effort. This is now the highest-value delta in the evaluation.
 
@@ -204,10 +207,10 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Move `segtree.py` from `tianshou/data/utils/` to `tianshou/utils/`.
 
-| Axis | Serena (`move`) | Built-in |
-|------|------|------|
-| Calls | 1 | 3+ (bash mv, find imports, update each) |
-| Import updates | Automatic (updated `__init__.py`) | Manual |
+| Axis           | Serena (`move`)                   | Built-in                                |
+| -------------- | --------------------------------- | --------------------------------------- |
+| Calls          | 1                                 | 3+ (bash mv, find imports, update each) |
+| Import updates | Automatic (updated `__init__.py`) | Manual                                  |
 
 **Verdict:** Serena advantage — single call with automatic import updates.
 
@@ -215,10 +218,10 @@ Serena's primary contribution is move-refactoring (symbol and file moves with im
 
 **Attempted:** Delete `_dict_of_arr_to_arr_of_dicts` (has 2 usages).
 
-| Axis | Serena (`safe_delete`) | Built-in |
-|------|------|------|
-| Calls | 1 (refused, reported usages) | 2 (search_project + manual decision) |
-| Safety | Refuses deletion, reports exact usages with file:line and enclosing function | Must manually verify search results |
+| Axis   | Serena (`safe_delete`)                                                       | Built-in                             |
+| ------ | ---------------------------------------------------------------------------- | ------------------------------------ |
+| Calls  | 1 (refused, reported usages)                                                 | 2 (search_project + manual decision) |
+| Safety | Refuses deletion, reports exact usages with file:line and enclosing function | Must manually verify search results  |
 
 **Verdict:** Serena provides a safety guard with precise diagnostics. Minor but useful advantage.
 
@@ -242,14 +245,14 @@ All three succeeded without re-reading the file. Name paths remained stable acro
 
 ## 4. Token-Efficiency Analysis
 
-| Edit size | Serena payload | Built-in payload | Winner |
-|-----------|---------------|-----------------|--------|
-| Small (1-3 lines in 20-line method) | ~20 lines (full body) | ~2 lines (search+replace) | Built-in (10x less) |
-| Medium (rewrite ~20 lines) | ~20 lines (new body) + prerequisite find | ~40 lines (old+new) | Comparable |
-| Large (rewrite 50+ lines) | ~50+ lines (new body) | ~100+ lines (old+new) | Serena (2x less, no old body needed) |
-| Insert | ~N lines (new code only) | ~N lines + anchor context | Comparable |
-| Cross-file rename | ~1 line (name + new name) | ~1 line (name + new name) | Tie (both semantic) |
-| Move symbol | ~1 line (source + target) | ~7 calls with full bodies | Serena (>>10x less) |
+| Edit size                           | Serena payload                           | Built-in payload          | Winner                               |
+| ----------------------------------- | ---------------------------------------- | ------------------------- | ------------------------------------ |
+| Small (1-3 lines in 20-line method) | ~20 lines (full body)                    | ~2 lines (search+replace) | Built-in (10x less)                  |
+| Medium (rewrite ~20 lines)          | ~20 lines (new body) + prerequisite find | ~40 lines (old+new)       | Comparable                           |
+| Large (rewrite 50+ lines)           | ~50+ lines (new body)                    | ~100+ lines (old+new)     | Serena (2x less, no old body needed) |
+| Insert                              | ~N lines (new code only)                 | ~N lines + anchor context | Comparable                           |
+| Cross-file rename                   | ~1 line (name + new name)                | ~1 line (name + new name) | Tie (both semantic)                  |
+| Move symbol                         | ~1 line (source + target)                | ~7 calls with full bodies | Serena (>>10x less)                  |
 
 **Forced reads:** Serena's `replace_symbol_body` requires a `find_symbol` call to get the current body before editing. Built-in `search_replace` needs no prerequisite if the search text is known, but often requires `open` to discover it.
 
@@ -291,16 +294,16 @@ All three succeeded without re-reading the file. Name paths remained stable acro
 
 ## 7. Unique Capabilities (No Built-In Equivalent)
 
-| Capability | Frequency | Impact per use |
-|-----------|-----------|---------------|
-| Move symbol between modules (with import updates) | Occasional | Saves ~7 calls, eliminates manual import tracking |
-| Move file with import updates | Occasional | Saves ~3 calls |
-| Transitive type hierarchy | A few times per exploration session | Provides information unavailable to built-ins |
-| External dependency symbol lookup | Occasional | Provides information unavailable to built-ins |
-| Safe delete with usage guard | Occasional | Prevents accidental breakage |
-| Propagated delete (delete + remove call sites) | Rare | Saves multiple manual edits |
-| Inline symbol | Rare | Saves multiple manual edits |
-| Scope-precise symbol targeting by name path | Continuous (every symbol interaction) | Eliminates disambiguation overhead |
+| Capability                                        | Frequency                             | Impact per use                                    |
+| ------------------------------------------------- | ------------------------------------- | ------------------------------------------------- |
+| Move symbol between modules (with import updates) | Occasional                            | Saves ~7 calls, eliminates manual import tracking |
+| Move file with import updates                     | Occasional                            | Saves ~3 calls                                    |
+| Transitive type hierarchy                         | A few times per exploration session   | Provides information unavailable to built-ins     |
+| External dependency symbol lookup                 | Occasional                            | Provides information unavailable to built-ins     |
+| Safe delete with usage guard                      | Occasional                            | Prevents accidental breakage                      |
+| Propagated delete (delete + remove call sites)    | Rare                                  | Saves multiple manual edits                       |
+| Inline symbol                                     | Rare                                  | Saves multiple manual edits                       |
+| Scope-precise symbol targeting by name path       | Continuous (every symbol interaction) | Eliminates disambiguation overhead                |
 
 **Verdict:** Serena provides 5-6 capabilities with no practical built-in equivalent, concentrated in move-refactoring, semantic navigation, and safe/propagated delete.
 
@@ -308,14 +311,14 @@ All three succeeded without re-reading the file. Name paths remained stable acro
 
 ## 8. Tasks Outside Serena's Scope (Built-In Only)
 
-| Task | Share of typical session |
-|------|------------------------|
-| Reading/editing non-code files (configs, docs, changelogs, notebooks) | ~15-20% |
-| Free-text search (log strings, URLs, magic constants) | ~10% |
-| Terminal commands (git, test runners, build tools) | ~15-20% |
-| Creating new files from scratch | ~5-10% |
-| Directory listing and repo navigation | ~5% |
-| Running and debugging applications | ~10-15% |
+| Task                                                                  | Share of typical session |
+| --------------------------------------------------------------------- | ------------------------ |
+| Reading/editing non-code files (configs, docs, changelogs, notebooks) | ~15-20%                  |
+| Free-text search (log strings, URLs, magic constants)                 | ~10%                     |
+| Terminal commands (git, test runners, build tools)                    | ~15-20%                  |
+| Creating new files from scratch                                       | ~5-10%                   |
+| Directory listing and repo navigation                                 | ~5%                      |
+| Running and debugging applications                                    | ~10-15%                  |
 
 Estimated share of session where Serena's augmentation applies: **~35-50%** (code navigation, symbol editing, refactoring). The remainder is built-in-only territory.
 
@@ -325,21 +328,21 @@ Estimated share of session where Serena's augmentation applies: **~35-50%** (cod
 
 ## 9. Practical Usage Rule
 
-| Task type | Use |
-|-----------|-----|
-| Cross-file rename | Either (both provide semantic rename in 1 call) |
-| Move symbol/file with import updates | Serena (unique capability) |
-| Safe/propagated delete | Serena (unique capability) |
-| Inline symbol | Serena (unique capability) |
-| Type hierarchy, dependency lookup | Serena (unique capability) |
-| Find code references to a symbol | Serena (`find_referencing_symbols`) |
-| Find text mentions anywhere | Built-in (`search_project` / Grep) |
-| Small edit (1-3 lines) | Built-in (`search_replace`) |
-| Full method rewrite | Either (comparable) |
-| Insert at structural location | Serena (`insert_after_symbol`) if name path known; built-in otherwise |
-| Read non-code files | Built-in (`open` / Read) |
-| Terminal operations | Built-in (bash) |
-| New file creation | Built-in (`create`) |
-| Chained edits in one file | Either; Serena if line-number staleness is a concern |
+| Task type                            | Use                                                                   |
+| ------------------------------------ | --------------------------------------------------------------------- |
+| Cross-file rename                    | Either (both provide semantic rename in 1 call)                       |
+| Move symbol/file with import updates | Serena (unique capability)                                            |
+| Safe/propagated delete               | Serena (unique capability)                                            |
+| Inline symbol                        | Serena (unique capability)                                            |
+| Type hierarchy, dependency lookup    | Serena (unique capability)                                            |
+| Find code references to a symbol     | Serena (`find_referencing_symbols`)                                   |
+| Find text mentions anywhere          | Built-in (`search_project` / Grep)                                    |
+| Small edit (1-3 lines)               | Built-in (`search_replace`)                                           |
+| Full method rewrite                  | Either (comparable)                                                   |
+| Insert at structural location        | Serena (`insert_after_symbol`) if name path known; built-in otherwise |
+| Read non-code files                  | Built-in (`open` / Read)                                              |
+| Terminal operations                  | Built-in (bash)                                                       |
+| New file creation                    | Built-in (`create`)                                                   |
+| Chained edits in one file            | Either; Serena if line-number staleness is a concern                  |
 
 **Verdict:** Use Serena for move-refactoring, semantic navigation, and safe delete; use either toolset for rename; use built-ins for text-level edits, non-code files, and terminal operations.

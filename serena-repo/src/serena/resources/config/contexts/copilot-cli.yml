@@ -2,7 +2,7 @@ description: Claude Code (CLI agent where file operations, basic edits, etc. are
 prompt: |
   You are running in a CLI coding agent context where file operations, basic (line-based) edits and reads 
   as well as shell commands are handled by your own, internal tools.
-  
+
   If Serena's tools can be used to achieve your task, you should prioritize them.
   In particular, it is important that you avoid reading entire source code files unless it is strictly necessary!
   Instead, for exploring and reading code in a token-efficient manner, use Serena's overview and symbolic search tools.

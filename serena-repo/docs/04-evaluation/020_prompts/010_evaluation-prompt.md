@@ -1,7 +1,7 @@
 # Evaluation Prompt
 
 We use the prompt below to evaluate the added value of Serena's tools against the
-agent's built-in tools on a given project. 
+agent's built-in tools on a given project.
 The evaluations were created in one-shot sessions, only using this
 prompt and the follow-up [prompt for summarization](020_summary-prompt)
 

@@ -1,14 +1,14 @@
 description: All tools, with detailed instructions for code editing
-prompt: |  
+prompt: |
   Use symbolic editing tools whenever possible for precise code modifications.
-  
+
   {% if 'jet_brains_move' in available_tools -%}
   **Refactoring tools**
   You also have access to Serena's refactoring tools (move, inline, safe_delete) 
   which should ALWAYS be preferred over naive and primitive approaches when applicable.
   When you need to move, inline or delete a symbol, you should always try using the corresponding tool first.
   {%- endif %}
-  
+
   {% if 'jet_brains_move' in available_tools -%}
   Apart from refactoring tools
   {%- endif %}
@@ -35,6 +35,6 @@ prompt: |
   In particular, you know how to use wildcards effectively in order to avoid specifying the full original text to be replaced!
   {% endif %}
 excluded_tools:
- - replace_lines
- - insert_at_line
- - delete_lines
+  - replace_lines
+  - insert_at_line
+  - delete_lines

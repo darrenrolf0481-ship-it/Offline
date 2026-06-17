@@ -9,10 +9,10 @@ and the limitations described below do not apply.
 ## General
 
 Serena supports two C/C++ language servers, clangd (default) and ccls.
-Both have their pros and cons and require a properly configured `compile_commands.json` 
+Both have their pros and cons and require a properly configured `compile_commands.json`
 for cross-file reference finding, see below for details.
 
-Your project must have a `compile_commands.json` file at the repository root. 
+Your project must have a `compile_commands.json` file at the repository root.
 This file is essential for correct parsing and cross-file reference finding.
 
 You can use a specific clangd or ccls installation (e.g., a custom build or a version provided by your project),
@@ -34,7 +34,7 @@ Serena will detect them and transform them into absolute paths automatically (wr
 
 #### Customizing the Compilation Database Location
 
-By default, Serena creates the transformed compilation database at `.serena/compile_commands.json`. 
+By default, Serena creates the transformed compilation database at `.serena/compile_commands.json`.
 You can customize this location via project settings:
 
 ```yaml
@@ -51,6 +51,7 @@ ccls requires manual installation and configuration. It may perform better in so
 #### Installation
 
 **Linux:**
+
 ```bash
 # Ubuntu/Debian (22.04+)
 sudo apt-get install ccls
@@ -63,6 +64,7 @@ sudo pacman -S ccls
 ```
 
 **macOS:**
+
 ```bash
 brew install ccls
 ```
@@ -87,10 +89,10 @@ and no transformed `compile_commands.json` file will be created.
 
 ### Files Created After Server Initialization
 
-Both clangd and ccls have a fundamental limitation: 
+Both clangd and ccls have a fundamental limitation:
 **files created by external mechanisms after the language server starts are not automatically indexed**.
 
-Cross-file references to newly created files will not work unless the new file is at some point opened by the language server (for example, by a symbol lookup in it), or until `compile_commands.json` is updated and 
+Cross-file references to newly created files will not work unless the new file is at some point opened by the language server (for example, by a symbol lookup in it), or until `compile_commands.json` is updated and
 the language server is restarted.
 
 ---

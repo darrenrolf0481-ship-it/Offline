@@ -14,6 +14,7 @@
 **Common Issue:** If you see `v3Schema.safeParseAsync is not a function`, there's a version mismatch.
 
 **Solution:**
+
 ```bash
 cd mcp-vibe-coding-tools
 npm list @modelcontextprotocol/sdk  # Check version

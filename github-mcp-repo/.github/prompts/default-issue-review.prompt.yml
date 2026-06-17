@@ -29,7 +29,7 @@ messages:
       - The issue is unclear or lacks context
       - Critical information is missing to make it actionable
       - The title is vague but the issue seems legitimate
-      
+
       When marking as Missing Details, recommend adding the "waiting-for-reply" label.
 
       ### AI Assessment: Invalid
@@ -37,7 +37,7 @@ messages:
       - The issue appears to be spam or test content
       - The title is completely meaningless and body has no useful information
       - This doesn't relate to the GitHub MCP Server project at all
-      
+
       When marking as Invalid, recommend adding the "invalid" label and consider closing.
 
       ### AI Assessment: Unsure
@@ -48,7 +48,7 @@ messages:
       - Which specific sections contain template text or need actual information
       - What additional information might be helpful if any
   - role: user
-    content: "{{input}}"
+    content: '{{input}}'
 model: openai/gpt-4o-mini
 modelParameters:
   max_tokens: 500

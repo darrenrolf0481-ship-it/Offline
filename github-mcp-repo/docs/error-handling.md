@@ -47,6 +47,7 @@ return ghErrors.NewGitHubAPIErrorResponse(ctx, message, response, err), nil
 ```
 
 This function:
+
 - Creates a `GitHubAPIError` with the provided message, response, and error
 - Stores the error in the context for middleware inspection
 - Returns an appropriate MCP tool error response
@@ -102,12 +103,12 @@ func GetIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (tool
             if err != nil {
                 return mcp.NewToolResultError(err.Error()), nil
             }
-            
+
             client, err := getClient(ctx)
             if err != nil {
                 return nil, fmt.Errorf("failed to get GitHub client: %w", err)
             }
-            
+
             issue, resp, err := client.Issues.Get(ctx, owner, repo, issueNumber)
             if err != nil {
                 return ghErrors.NewGitHubAPIErrorResponse(ctx,
@@ -116,7 +117,7 @@ func GetIssue(getClient GetClientFn, t translations.TranslationHelperFunc) (tool
                     err,
                 ), nil
             }
-            
+
             return MarshalledTextResult(issue), nil
         }
 }

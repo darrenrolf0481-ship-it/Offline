@@ -5,6 +5,7 @@ This guide explains how to prepare a Scala project so that Serena can provide re
 Serena automatically bootstraps the Metals language server using Coursier when needed. Your project, however, must be importable by a build server (BSP) — typically via Bloop or sbt’s built‑in BSP — so that Metals can compile and index your code.
 
 ---
+
 ## Prerequisites
 
 Install the following on your system and ensure they are available on `PATH`:
@@ -15,6 +16,7 @@ Install the following on your system and ensure they are available on `PATH`:
   - Serena uses `cs` if available; if only `coursier` exists, it will attempt to install `cs`. If neither is present, install Coursier first.
 
 ---
+
 ## Quick Start (Recommended: VS Code + Metals auto‑import)
 
 1. Open your Scala project in VS Code.
@@ -25,27 +27,32 @@ Install the following on your system and ensure they are available on `PATH`:
 This flow ensures the `.bloop/` and (if applicable) `.metals/` directories are created and your build is known to the build server that Metals uses.
 
 ---
+
 ## Manual Setup (No VS Code)
 
 Follow these steps if you prefer a manual setup or you are not using VS Code:
 
 These instructions cover the setup for projects that use sbt as the build tool, with Bloop as the BSP server.
 
-
 1. Add Bloop to `project/plugins.sbt` in your Scala project:
+
    ```scala
    // project/plugins.sbt
    addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "<version>")
    ```
+
    Replace `<version>` with an appropriate current version from the Metals documentation.
 
 2. Export Bloop configuration with sources:
+
    ```bash
    sbt -Dbloop.export-jar-classifiers=sources bloopInstall
    ```
+
    This creates a `.bloop/` directory containing your project’s build metadata for the BSP server.
 
 3. Compile from sbt to verify the build:
+
    ```bash
    sbt compile
    ```
@@ -53,17 +60,19 @@ These instructions cover the setup for projects that use sbt as the build tool, 
 4. Start Serena in your project root. Serena will bootstrap Metals (if not already present) and connect to the build server using the configuration exported above.
 
 ---
+
 ## Using Serena with Scala
 
 - Serena automatically detects Scala files (`*.scala`, `*.sbt`) and will start a Metals process per project when needed.
 - On first run, you may see messages like “Bootstrapping metals…” in the Serena logs — this is expected.
 - Optimal results require that your project compiles successfully via the build server (BSP). If compilation fails, fix build errors in `sbt` first.
 
-
 Notes:
+
 - Ensure you completed the manual or auto‑import steps so that the build is compiled and indexed; otherwise, code navigation and references may be incomplete until the first successful compile.
 
 ---
+
 ## Running Multiple Metals Instances
 
 Serena can run alongside other Metals instances (e.g., VS Code with Metals extension) on the same project. This is **fully supported** by Metals via H2 AUTO_SERVER mode.
@@ -86,18 +95,20 @@ Serena automatically detects and handles stale locks based on your configuration
 # ~/.serena/serena_config.yml or .serena/project.yml
 ls_specific_settings:
   scala:
-    on_stale_lock: "auto-clean"      # auto-clean | warn | fail
-    log_multi_instance_notice: true  # Log info when another Metals detected
+    on_stale_lock: 'auto-clean' # auto-clean | warn | fail
+    log_multi_instance_notice: true # Log info when another Metals detected
 ```
 
 #### Stale Lock Modes
 
-| Mode | Behavior |
-|------|----------|
+| Mode         | Behavior                                                                                 |
+| ------------ | ---------------------------------------------------------------------------------------- |
 | `auto-clean` | **(Default, Recommended)** Automatically removes stale lock files and proceeds normally. |
-| `warn` | Logs a warning but proceeds. Metals may use in-memory database (slower). |
-| `fail` | Raises an error and refuses to start. Useful for debugging lock issues. |
+| `warn`       | Logs a warning but proceeds. Metals may use in-memory database (slower).                 |
+| `fail`       | Raises an error and refuses to start. Useful for debugging lock issues.                  |
 
 ---
-## Reference 
+
+## Reference
+
 - Metals + sbt: [https://scalameta.org/metals/docs/build-tools/sbt](https://scalameta.org/metals/docs/build-tools/sbt)

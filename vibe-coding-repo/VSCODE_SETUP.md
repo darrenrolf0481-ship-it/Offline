@@ -25,9 +25,7 @@ npm run build
     "mcp-vibe-coding-tools": {
       "type": "stdio",
       "command": "node",
-      "args": [
-        "/path/to/mcp-vibe-coding-tools/dist/index.js"
-      ]
+      "args": ["/path/to/mcp-vibe-coding-tools/dist/index.js"]
     }
   }
 }
@@ -36,10 +34,12 @@ npm run build
 **That's it!** Just replace `/path/to/mcp-vibe-coding-tools/dist/index.js` with the absolute path to where you cloned this repo.
 
 **How it works:**
+
 - The server code lives in one place (wherever you cloned it)
 - VS Code automatically sets the working directory to your currently open workspace
 - Open any project → Server works in that project
 - No per-project configuration needed!
+
 1. In your project, create/edit `.vscode/settings.json`
 2. Add the same configuration as above
 
@@ -62,7 +62,7 @@ Copilot should now be able to use all 40+ tools from this MCP server!
 The server provides these tool categories:
 
 - **Filesystem Tools**: read_file, write_file, list_directory, search_files, file_info, create_directory
-- **CLI Tools**: execute_command, get_environment, which_command  
+- **CLI Tools**: execute_command, get_environment, which_command
 - **Git Tools**: git_status, git_log, git_diff, git_branch, git_commit, git_push, git_pull, git_clone, git_stash
 - **Web Tools**: fetch_webpage, scrape_webpage, http_request, parse_html
 - **Node.js Tools**: npm_install, npm_run_script, npm_outdated, npm_init, read_package_json
@@ -72,14 +72,17 @@ The server provides these tool categories:
 ## Troubleshooting
 
 ### Server Not Appearing
+
 - Check that the path in settings.json is correct and absolute
 - Ensure the server is built (`npm run build`)
 - Check VS Code's Output panel (View > Output) and select "GitHub Copilot" from the dropdown
 
 ### Permission Errors
+
 Make sure the dist/index.js file is executable, or use `node` explicitly in the command.
 
 ### Environment Variables
+
 The `WORKSPACE_PATH` environment variable is automatically set to your current workspace folder. Tools use this as their working directory.
 
 ## Alternative: Claude Desktop Setup
@@ -91,9 +94,7 @@ If you want to use this with Claude Desktop instead, create `~/Library/Applicati
   "mcpServers": {
     "mcp-vibe-coding-tools": {
       "command": "node",
-      "args": [
-        "/Users/localadmin/github/mcp-vibe-coding-tools/dist/index.js"
-      ],
+      "args": ["/Users/localadmin/github/mcp-vibe-coding-tools/dist/index.js"],
       "env": {
         "WORKSPACE_PATH": "/path/to/your/workspace"
       }

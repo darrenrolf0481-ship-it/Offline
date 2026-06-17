@@ -4,7 +4,6 @@ about: Report a bug or unexpected behavior while using GitHub MCP Server
 title: ''
 labels: bug
 assignees: ''
-
 ---
 
 ### Describe the bug

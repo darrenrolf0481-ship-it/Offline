@@ -1,6 +1,7 @@
 # Install GitHub MCP Server in Windsurf
 
 ## Prerequisites
+
 1. Windsurf IDE installed (latest version)
 2. [GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new) with appropriate scopes
 3. For local installation: [Docker](https://www.docker.com/) installed and running
@@ -10,6 +11,7 @@
 The remote GitHub MCP server is hosted by GitHub at `https://api.githubcopilot.com/mcp/` and supports Streamable HTTP protocol. Windsurf currently supports PAT authentication only.
 
 ### Streamable HTTP Configuration
+
 Windsurf supports Streamable HTTP servers with a `serverUrl` field:
 
 ```json
@@ -28,6 +30,7 @@ Windsurf supports Streamable HTTP servers with a `serverUrl` field:
 ## Local Server Setup
 
 ### Docker Installation (Required)
+
 **Important**: The npm package `@modelcontextprotocol/server-github` is no longer supported as of April 2025. Use the official Docker image `ghcr.io/github/github-mcp-server` instead.
 
 ```json
@@ -54,6 +57,7 @@ Windsurf supports Streamable HTTP servers with a `serverUrl` field:
 ## Installation Steps
 
 ### Via Plugin Store
+
 1. Open Windsurf and navigate to Cascade
 2. Click the **Plugins** icon or **hammer icon** (🔨)
 3. Search for "GitHub MCP Server"
@@ -61,6 +65,7 @@ Windsurf supports Streamable HTTP servers with a `serverUrl` field:
 5. Click **Refresh** (🔄)
 
 ### Manual Configuration
+
 1. Click the hammer icon (🔨) in Cascade
 2. Click **Configure** to open `~/.codeium/windsurf/mcp_config.json`
 3. Add your chosen configuration from above
@@ -76,6 +81,7 @@ Windsurf supports Streamable HTTP servers with a `serverUrl` field:
 ## Verification
 
 After installation:
+
 1. Look for "1 available MCP server" in the MCP toolbar
 2. Click the hammer icon to see available GitHub tools
 3. Test with: "List my GitHub repositories"
@@ -84,16 +90,19 @@ After installation:
 ## Troubleshooting
 
 ### Remote Server Issues
+
 - **Authentication failures**: Verify PAT has correct scopes and hasn't expired
 - **Connection errors**: Check firewall/proxy settings for HTTPS connections
 - **Streamable HTTP not working**: Ensure you're using the correct `serverUrl` field format
 
 ### Local Server Issues
+
 - **Docker errors**: Ensure Docker Desktop is running
 - **Image pull failures**: Try `docker logout ghcr.io` then retry
 - **Docker not found**: Install Docker Desktop and ensure it's running
 
 ### General Issues
+
 - **Invalid JSON**: Validate with [jsonlint.com](https://jsonlint.com)
 - **Tools not appearing**: Restart Windsurf completely
 - **Check logs**: `~/.codeium/windsurf/logs/`

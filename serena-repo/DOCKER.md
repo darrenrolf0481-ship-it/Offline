@@ -24,6 +24,7 @@ You can mount a local configuration/data directory to persist settings across co
 Simply mount your local directory to `/workspaces/serena/config` in the container.
 Initially, be sure to add a `serena_config.yml` file to the mounted directory which applies the following
 special settings for Docker usage:
+
 ```
 # Disable the GUI log window since it's not supported in Docker
 gui_log_window: False
@@ -32,13 +33,14 @@ web_dashboard_listen_address: 0.0.0.0
 # Disable opening the web dashboard on launch (not possible within the container)
 web_dashboard_open_on_launch: False
 ```
+
 Set other configuration options as needed.
 
 ### Project Activation Limitations
 
 - **Only mounted directories work**: Projects must be mounted as volumes to be accessible
 - Projects outside the mounted directories cannot be activated or accessed
-- Since projects are not remembered across container restarts (unless you mount a local configuration as described above), 
+- Since projects are not remembered across container restarts (unless you mount a local configuration as described above),
   activate them using the full path (e.g. `/workspaces/projects/my-project`) when using dynamic project activation
 
 ### Language Support Limitations
@@ -64,6 +66,7 @@ SERENA_DASHBOARD_PORT=8080 docker-compose up serena
 ### Line Ending Issues on Windows
 
 ⚠️ **Windows Users**: Be aware of potential line ending inconsistencies:
+
 - Files edited within the Docker container may use Unix line endings (LF)
 - Your Windows system may expect Windows line endings (CRLF)
 - This can cause issues with version control and text editors
@@ -74,6 +77,7 @@ SERENA_DASHBOARD_PORT=8080 docker-compose up serena
 ### Using Docker Compose (Recommended)
 
 1. **Production mode** (for using Serena as MCP server):
+
    ```bash
    docker-compose up serena
    ```
@@ -113,7 +117,7 @@ services:
       - /path/to/another/project:/workspace/another-project
     # Add the context for the IDE assistant option:
     command:
-      - "uv run --directory . serena-mcp-server --transport sse --port 9121 --host 0.0.0.0 --context claude-code"
+      - 'uv run --directory . serena-mcp-server --transport sse --port 9121 --host 0.0.0.0 --context claude-code'
 ```
 
 See the [Docker Merge Compose files documentation](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/) for more details on using merge files.
@@ -121,6 +125,7 @@ See the [Docker Merge Compose files documentation](https://docs.docker.com/compo
 ## Accessing the Dashboard
 
 Once running, access the web dashboard at:
+
 - Default: http://localhost:24282/dashboard
 - Custom port: http://localhost:${SERENA_DASHBOARD_PORT}/dashboard
 
@@ -147,6 +152,7 @@ volumes:
 ### Port Already in Use
 
 If you see "port already in use" errors:
+
 ```bash
 # Check what's using the port
 lsof -i :24282  # macOS/Linux
@@ -159,6 +165,7 @@ SERENA_DASHBOARD_PORT=8080 docker-compose up serena
 ### Configuration Issues
 
 If you need to reset Docker configuration:
+
 ```bash
 # Remove Docker-specific config
 rm serena_config.docker.yml
@@ -169,6 +176,7 @@ rm serena_config.docker.yml
 ### Project Access Issues
 
 Ensure projects are properly mounted:
+
 - Check volume mounts in `docker-compose.yaml`
 - Use absolute paths for external projects
 - Verify permissions on mounted directories

@@ -10,11 +10,11 @@ section in the Insiders docs](./insiders-features.md#how-feature-flags-are-resol
 
 ## Enabling a flag
 
-| Method | Remote Server | Local Server |
-|--------|---------------|--------------|
-| Header | `X-MCP-Features: <flag>,<flag>` | N/A |
-| CLI flag | N/A | `--features=<flag>,<flag>` |
-| Environment variable | N/A | `GITHUB_FEATURES=<flag>,<flag>` |
+| Method               | Remote Server                   | Local Server                    |
+| -------------------- | ------------------------------- | ------------------------------- |
+| Header               | `X-MCP-Features: <flag>,<flag>` | N/A                             |
+| CLI flag             | N/A                             | `--features=<flag>,<flag>`      |
+| Environment variable | N/A                             | `GITHUB_FEATURES=<flag>,<flag>` |
 
 Only flags listed in
 [`AllowedFeatureFlags`](../pkg/github/feature_flags.go) can be enabled by
@@ -62,7 +62,7 @@ runtime behavior (such as output formatting) won't appear here.
     Options are:
     - 'create' - creates a new issue.
     - 'update' - updates an existing issue.
-     (string, required)
+      (string, required)
   - `milestone`: Milestone number (number, optional)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)
@@ -85,7 +85,7 @@ runtime behavior (such as output formatting) won't appear here.
     Options are:
     - 'create' - creates a new issue.
     - 'update' - updates an existing issue.
-     (string, required)
+      (string, required)
   - `milestone`: Milestone number (number, optional)
   - `owner`: Repository owner (string, required)
   - `repo`: Repository name (string, required)

@@ -46,14 +46,14 @@ You can also connect to the hosted MCP server directly. After securely storing y
 ```json
 // ~/.gemini/settings.json
 {
-    "mcpServers": {
-        "github": {
-            "httpUrl": "https://api.githubcopilot.com/mcp/",
-            "headers": {
-                "Authorization": "Bearer $GITHUB_MCP_PAT"
-            }
-        }
+  "mcpServers": {
+    "github": {
+      "httpUrl": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer $GITHUB_MCP_PAT"
+      }
     }
+  }
 }
 ```
 
@@ -64,22 +64,22 @@ With docker running, you can run the GitHub MCP server in a container:
 ```json
 // ~/.gemini/settings.json
 {
-    "mcpServers": {
-        "github": {
-            "command": "docker",
-            "args": [
-                "run",
-                "-i",
-                "--rm",
-                "-e",
-                "GITHUB_PERSONAL_ACCESS_TOKEN",
-                "ghcr.io/github/github-mcp-server"
-            ],
-            "env": {
-                "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_MCP_PAT"
-            }
-        }
+  "mcpServers": {
+    "github": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_MCP_PAT"
+      }
     }
+  }
 }
 ```
 
@@ -92,15 +92,15 @@ Then, replacing `/path/to/binary` with the actual path to your binary, configure
 ```json
 // ~/.gemini/settings.json
 {
-    "mcpServers": {
-        "github": {
-            "command": "/path/to/binary",
-            "args": ["stdio"],
-            "env": {
-                "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_MCP_PAT"
-            }
-        }
+  "mcpServers": {
+    "github": {
+      "command": "/path/to/binary",
+      "args": ["stdio"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_MCP_PAT"
+      }
     }
+  }
 }
 ```
 
@@ -110,25 +110,25 @@ To verify that the GitHub MCP server has been configured, start Gemini CLI in yo
 
 1. **Check MCP server status**:
 
-    ```
-    /mcp list
-    ```
+   ```
+   /mcp list
+   ```
 
-    ```
-    ℹConfigured MCP servers:
+   ```
+   ℹConfigured MCP servers:
 
-    🟢 github - Ready (96 tools, 2 prompts)
-        Tools:
-        - github__add_comment_to_pending_review
-        - github__add_issue_comment
-        - github__add_sub_issue
-        ...
-    ```
+   🟢 github - Ready (96 tools, 2 prompts)
+       Tools:
+       - github__add_comment_to_pending_review
+       - github__add_issue_comment
+       - github__add_sub_issue
+       ...
+   ```
 
 2. **Test with a prompt**
-    ```
-    List my GitHub repositories
-    ```
+   ```
+   List my GitHub repositories
+   ```
 
 ## Additional Configuration
 
@@ -139,29 +139,29 @@ You can find more MCP configuration options for Gemini CLI here: [MCP Configurat
 ### Local Server Issues
 
 - **Docker errors**: Ensure Docker Desktop is running
-    ```bash
-    docker --version
-    ```
+  ```bash
+  docker --version
+  ```
 - **Image pull failures**: Try `docker logout ghcr.io` then retry
 - **Docker not found**: Install Docker Desktop and ensure it's running
 
 ### Authentication Issues
 
 - **Invalid PAT**: Verify your GitHub PAT has correct scopes:
-    - `repo` - Repository operations
-    - `read:packages` - Docker image access (if using Docker)
+  - `repo` - Repository operations
+  - `read:packages` - Docker image access (if using Docker)
 - **Token expired**: Generate a new GitHub PAT
 
 ### Configuration Issues
 
 - **Invalid JSON**: Validate your configuration:
-    ```bash
-    cat ~/.gemini/settings.json | jq .
-    ```
+  ```bash
+  cat ~/.gemini/settings.json | jq .
+  ```
 - **MCP connection issues**: Check logs for connection errors:
-    ```bash
-    gemini --debug "test command"
-    ```
+  ```bash
+  gemini --debug "test command"
+  ```
 
 ## References
 

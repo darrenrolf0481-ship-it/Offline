@@ -12,13 +12,13 @@ When the server starts with a classic PAT, it makes a lightweight HTTP HEAD requ
 
 ## PAT vs OAuth Authentication
 
-| Authentication | Scope Handling |
-|---------------|----------------|
-| **Classic PAT** (`ghp_`) | Filters tools at startup based on token scopes—tools requiring unavailable scopes are hidden |
-| **OAuth** (remote server only) | Uses OAuth scope challenges—when a tool needs a scope you haven't granted, you're prompted to authorize it |
-| **Fine-grained PAT** (`github_pat_`) | No filtering—all tools shown, API enforces permissions |
-| **GitHub App** (`ghs_`) | No filtering—all tools shown, permissions based on app installation |
-| **Server-to-server** | No filtering—all tools shown, permissions based on app/token configuration |
+| Authentication                       | Scope Handling                                                                                             |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| **Classic PAT** (`ghp_`)             | Filters tools at startup based on token scopes—tools requiring unavailable scopes are hidden               |
+| **OAuth** (remote server only)       | Uses OAuth scope challenges—when a tool needs a scope you haven't granted, you're prompted to authorize it |
+| **Fine-grained PAT** (`github_pat_`) | No filtering—all tools shown, API enforces permissions                                                     |
+| **GitHub App** (`ghs_`)              | No filtering—all tools shown, permissions based on app installation                                        |
+| **Server-to-server**                 | No filtering—all tools shown, permissions based on app/token configuration                                 |
 
 With OAuth, the remote server can dynamically request additional scopes as needed. With PATs, scopes are fixed at token creation, so the server proactively hides tools you can't use.
 
@@ -27,6 +27,7 @@ With OAuth, the remote server can dynamically request additional scopes as neede
 When using the [remote MCP server](./remote-server.md) with OAuth authentication, the server uses a different approach called **scope challenges**. Instead of hiding tools upfront, all tools are available, and the server requests additional scopes on-demand when you try to use a tool that requires them.
 
 **How it works:**
+
 1. You attempt to use a tool (e.g., creating an issue)
 2. If your current OAuth token lacks the required scope, the server returns an OAuth scope challenge
 3. Your MCP client prompts you to authorize the additional scope
@@ -44,6 +45,7 @@ curl -sI -H "Authorization: Bearer $GITHUB_PERSONAL_ACCESS_TOKEN" \
 ```
 
 Example output:
+
 ```
 x-oauth-scopes: delete_repo, gist, read:org, repo
 ```
@@ -88,11 +90,11 @@ WARN: failed to fetch token scopes, continuing without scope filtering
 
 ## Troubleshooting
 
-| Problem | Cause | Solution |
-|---------|-------|----------|
-| Missing expected tools | Token lacks required scope | [Edit your PAT's scopes](https://github.com/settings/tokens) in GitHub settings |
-| All tools visible despite limited PAT | Scope detection failed | Check logs for warnings about scope fetching |
-| "Insufficient permissions" errors | Tool visible but scope insufficient | This shouldn't happen with scope filtering; report as bug |
+| Problem                               | Cause                               | Solution                                                                        |
+| ------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------- |
+| Missing expected tools                | Token lacks required scope          | [Edit your PAT's scopes](https://github.com/settings/tokens) in GitHub settings |
+| All tools visible despite limited PAT | Scope detection failed              | Check logs for warnings about scope fetching                                    |
+| "Insufficient permissions" errors     | Tool visible but scope insufficient | This shouldn't happen with scope filtering; report as bug                       |
 
 > **Tip:** You can adjust the scopes of an existing classic PAT at any time via [GitHub's token settings](https://github.com/settings/tokens). After updating scopes, restart the MCP server to pick up the changes.
 

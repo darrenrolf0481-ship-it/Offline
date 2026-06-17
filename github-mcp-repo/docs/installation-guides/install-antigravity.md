@@ -25,6 +25,7 @@ Uses GitHub's hosted server at `https://api.githubcopilot.com/mcp/`.
 5. Click "View raw config"
 
 This will open your `mcp_config.json` file at:
+
 - **Windows**: `C:\Users\<USERNAME>\.gemini\antigravity\mcp_config.json`
 - **macOS/Linux**: `~/.gemini/antigravity/mcp_config.json`
 
@@ -54,6 +55,7 @@ Replace `YOUR_GITHUB_PAT` with your actual GitHub Personal Access Token.
 Create a token here: https://github.com/settings/tokens
 
 Recommended scopes:
+
 - `repo` - Full control of private repositories
 - `read:org` - Read org and team membership
 - `read:user` - Read user profile data
@@ -97,6 +99,7 @@ If you prefer running the server locally with Docker:
 ```
 
 **Requirements**:
+
 - Docker Desktop installed and running
 - Docker must be in your system PATH
 
@@ -121,6 +124,7 @@ Make sure you're using `serverUrl` (not `url`) for the remote server configurati
 ## Available Tools
 
 Once installed, you'll have access to tools like:
+
 - `create_repository` - Create new GitHub repositories
 - `push_files` - Push files to repositories
 - `search_repositories` - Search for repositories

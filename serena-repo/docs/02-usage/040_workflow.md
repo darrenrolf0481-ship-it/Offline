@@ -13,13 +13,15 @@ setting up a project with Serena typically involves the following steps:
 4. **Working on coding tasks**: Using Serena to help you with actual coding tasks in the project
 
 (project-creation-indexing)=
+
 ## Project Creation & Indexing
 
 Project creation is the process of defining fundamental project settings that are relevant to Serena's operation.
 
-You can create a project either  
- * explicitly, using the project creation command (see below), or
- * implicitly, by just activating a directory as a project while already in a conversation; this will use default settings for your project (skip to the next section).
+You can create a project either
+
+- explicitly, using the project creation command (see below), or
+- implicitly, by just activating a directory as a project while already in a conversation; this will use default settings for your project (skip to the next section).
 
 ### Explicit Project Creation
 
@@ -27,49 +29,52 @@ To explicitly create a project, use the following command while in the project d
 
     serena project create [options] [project directory]
 
- * The project directory defaults to the current directory if not specified.
- * For an existing project, the programming languages will be detected based on
-   the source files present, and the main language will be activated automatically.
-   If multiple languages are detected, you will be prompted whether you want to enable them.  
- * For an empty project, you can optionally specify one or more languages
-   to be activated explicitly via the `--language` parameter
-   (e.g. `--language python --language typescript`).
- * You can optionally specify a custom project name with `--name my-name`.
- * You can immediately index the project after creation with `--index`.
+- The project directory defaults to the current directory if not specified.
+- For an existing project, the programming languages will be detected based on
+  the source files present, and the main language will be activated automatically.
+  If multiple languages are detected, you will be prompted whether you want to enable them.
+- For an empty project, you can optionally specify one or more languages
+  to be activated explicitly via the `--language` parameter
+  (e.g. `--language python --language typescript`).
+- You can optionally specify a custom project name with `--name my-name`.
+- You can immediately index the project after creation with `--index`.
 
 (project-config)=
+
 #### Project Configuration
 
 After creation, you can adjust the project settings in the generated `.serena/project.yml` file
 within the project directory.
 
 The file allows you to configure ...
-  * the name by which you want to refer to the project (relevant when telling the LLM to dynamically activate the project)
-  * the set of programming languages for which language servers are spawned (not relevant when using the JetBrains plugin)
-    Note that you can dynamically add/remove language servers while Serena is running via the [Dashboard](060_dashboard).
-  * the [language backend](per-project-language-backend) to use for this project (overriding the global setting)
-  * the encoding used in source files
-  * ignore rules
-  * write access
-  * [additional workspace folders](additional-workspace-folders) for cross-package reference support in monorepos
-  * an initial prompt that shall be passed to the LLM whenever the project is activated
-  * the set of tools and modes to use for the project
-  * and some other settings.
 
-For detailed information on the parameters and possible settings, see the 
+- the name by which you want to refer to the project (relevant when telling the LLM to dynamically activate the project)
+- the set of programming languages for which language servers are spawned (not relevant when using the JetBrains plugin)
+  Note that you can dynamically add/remove language servers while Serena is running via the [Dashboard](060_dashboard).
+- the [language backend](per-project-language-backend) to use for this project (overriding the global setting)
+- the encoding used in source files
+- ignore rules
+- write access
+- [additional workspace folders](additional-workspace-folders) for cross-package reference support in monorepos
+- an initial prompt that shall be passed to the LLM whenever the project is activated
+- the set of tools and modes to use for the project
+- and some other settings.
+
+For detailed information on the parameters and possible settings, see the
 [template file](https://github.com/oraios/serena/blob/main/src/serena/resources/project.template.yml).
 
 :::{note}
-Many settings in project.yml *extend* or *override* settings in the global configuration file `serena_config.yml`.
+Many settings in project.yml _extend_ or _override_ settings in the global configuration file `serena_config.yml`.
 So use the project configuration specifically for aspects that apply only to the particular project.
 :::
 
 **Local Overrides**. The project.yml file is intended to be versioned together with the project.
 You can specify local overrides for the settings in a `project.local.yml` file in the same directory
-(which, by default, is ignored by git). 
+(which, by default, is ignored by git).
 Any keys defined therein will override the respective key in `project.yml`.
 
 (additional-workspace-folders)=
+
 #### Additional Workspace Folders (Cross-Package References)
 
 In monorepos or multi-package setups, Serena's language server normally only sees symbols within the
@@ -97,39 +102,41 @@ cross-references for.
 :::
 
 (indexing)=
+
 ### Indexing
 
 :::{note}
 Indexing is not a relevant operation when using the JetBrains plugin, as indexing is handled by the IDE.
 :::
 
-Especially for larger project, it can be advisable to index the project after creation, pre-caching 
+Especially for larger project, it can be advisable to index the project after creation, pre-caching
 symbol information provided by the language server(s). This will avoid delays during the first tool invocation
 that requires symbol information.
 
 While in the project directory, run this command:
-   
+
     <serena> project index
 
 Indexing has to be called only once. During regular usage, Serena will automatically update the index whenever files change.
 
 (project-activation)=
+
 ## Project Activation
-   
+
 Project activation makes Serena aware of the project you want to work with.
 You can either choose to do this
- * while in a conversation, by telling the LLM to activate a project, e.g.,
-       
-      * "Activate the project /path/to/my_project" (for first-time activation with auto-creation)
-      * "Activate the project my_project"
-   
-   Note that this option requires the `activate_project` tool to be active, 
-   which it isn't in single-project [contexts](contexts) like `ide` or `claude-code` *if* a project is provided at startup.
-   (The tool is deactivated, because we assume that in these contexts, user will only work on the single, open project and have
-   no need to switch it.)
 
- * when the MCP server starts, by passing the project path or name as a command-line argument
-   (e.g. when using a single-project mode like `ide` or `claude-code`): `--project <path|name>`
+- while in a conversation, by telling the LLM to activate a project, e.g.,
+  - "Activate the project /path/to/my_project" (for first-time activation with auto-creation)
+  - "Activate the project my_project"
+
+  Note that this option requires the `activate_project` tool to be active,
+  which it isn't in single-project [contexts](contexts) like `ide` or `claude-code` _if_ a project is provided at startup.
+  (The tool is deactivated, because we assume that in these contexts, user will only work on the single, open project and have
+  no need to switch it.)
+
+- when the MCP server starts, by passing the project path or name as a command-line argument
+  (e.g. when using a single-project mode like `ide` or `claude-code`): `--project <path|name>`
 
 When working with the JetBrains plugin, be sure to have the same project folder open as a project in your IDE,
 i.e. the folder that is activated in Serena should correspond to the root folder of the project in your IDE.
@@ -141,7 +148,7 @@ it is started for the first time for a project.
 The goal of the onboarding is for Serena to get familiar with the project
 and to store memories, which it can then draw upon in future interactions.
 
-In general, **memories** provide a way for Serena to store and retrieve 
+In general, **memories** provide a way for Serena to store and retrieve
 information about the project, relevant conventions, and other relevant aspects.
 Memories may reference each other using the `` `mem:NAME` `` convention; references
 are kept in sync across renames, and a `serena memories check` command is available
@@ -155,7 +162,6 @@ For more information on this, including the target memory layout, the `mem:` ref
 convention, the `serena memories` CLI subcommands, and how to manage or disable these
 features, see [Memories & Onboarding](045_memories).
 
-
 ## Preparing Your Project
 
 When using Serena to work on your project, it can be helpful to follow a few best practices.
@@ -166,7 +172,7 @@ Serena uses the code structure for finding, reading and editing code. This means
 work well with well-structured code but may perform poorly on fully unstructured one (like a "God class"
 with enormous, non-modular functions).
 
-Furthermore, for languages that are not statically typed, the use of type annotations (if supported) 
+Furthermore, for languages that are not statically typed, the use of type annotations (if supported)
 are highly beneficial.
 
 ### Start from a Clean State
@@ -182,7 +188,7 @@ correct itself or continue working in a followup conversation if needed.
 and it might want to look at the git diff, it is important to
 set `git config core.autocrlf` to `true` on Windows.
 With `git config core.autocrlf` set to `false` on Windows, you may end up with huge diffs
-due to line endings only. 
+due to line endings only.
 It is generally a good idea to globally enable this git setting on Windows:
 
 ```shell
@@ -214,9 +220,10 @@ If several languages are used across the projects, specify all of them as needed
 For JetBrains mode, make sure that your IDE is configured to work with all the languages used across the projects (e.g. by installing the respective language plugins).
 
 (query-projects)=
+
 ### Reading from External Projects
 
-If, while working on a project, you want Serena to be able to read code or other information from another project (e.g. a library or otherwise related project), 
+If, while working on a project, you want Serena to be able to read code or other information from another project (e.g. a library or otherwise related project),
 this can be enabled via the `query_project` tool.
 Provided that the project you want to query is known to Serena (i.e. you have created it as described above),
 the `query_project` tool allows the agent to query files and symbolic information from that project.
@@ -226,14 +233,13 @@ This also enables a second tool for listing projects that can be queried.
 
 Depending on the language backend being used, the management of resources for the external projects varies:
 
-* When using the JetBrains backend, make sure that every project for which you want symbolic queries to work is open in an IDE instance. 
-* When using the LSP backend, executing symbolic tools via the query tool requires that Serena's **Project Server** be started,
+- When using the JetBrains backend, make sure that every project for which you want symbolic queries to work is open in an IDE instance.
+- When using the LSP backend, executing symbolic tools via the query tool requires that Serena's **Project Server** be started,
   which will automatically spawn the necessary language servers for the projects that are queried.
 
   To start the server, run
 
       serena start-project-server
-
 
 ### Multiple Agents Accessing a Single Serena Instance
 

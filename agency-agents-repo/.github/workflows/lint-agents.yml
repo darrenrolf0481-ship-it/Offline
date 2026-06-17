@@ -3,20 +3,20 @@ name: Lint Agent Files
 on:
   pull_request:
     paths:
-      - "academic/**"
-      - "design/**"
-      - "engineering/**"
-      - "finance/**"
-      - "game-development/**"
-      - "marketing/**"
-      - "paid-media/**"
-      - "sales/**"
-      - "product/**"
-      - "project-management/**"
-      - "testing/**"
-      - "support/**"
-      - "spatial-computing/**"
-      - "specialized/**"
+      - 'academic/**'
+      - 'design/**'
+      - 'engineering/**'
+      - 'finance/**'
+      - 'game-development/**'
+      - 'marketing/**'
+      - 'paid-media/**'
+      - 'sales/**'
+      - 'product/**'
+      - 'project-management/**'
+      - 'testing/**'
+      - 'support/**'
+      - 'spatial-computing/**'
+      - 'specialized/**'
 
 jobs:
   lint:

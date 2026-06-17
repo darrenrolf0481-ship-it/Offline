@@ -52,7 +52,7 @@ jobs:
       - name: Run MCP Server Diff
         uses: SamMorrowDrums/mcp-server-diff@v2.3.5
         with:
-          setup_go: "false"
+          setup_go: 'false'
           install_command: |
             go mod download
             mkdir -p pkg/github/ui_dist
@@ -116,13 +116,13 @@ jobs:
       - name: Run MCP Server Diff (streamable-http)
         uses: SamMorrowDrums/mcp-server-diff@v2.3.5
         with:
-          setup_go: "false"
+          setup_go: 'false'
           install_command: |
             go mod download
             mkdir -p pkg/github/ui_dist
             cp "${RUNNER_TEMP}"/ui_dist/*.html pkg/github/ui_dist/
           http_start_command: go run ./cmd/github-mcp-server http --port 8082
-          http_startup_wait_ms: "5000"
+          http_startup_wait_ms: '5000'
           configurations: ${{ steps.configs.outputs.configurations }}
 
       - name: Add interpretation note

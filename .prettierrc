@@ -4,5 +4,11 @@
   "tabWidth": 2,
   "trailingComma": "es5",
   "printWidth": 100,
-  "plugins": ["prettier/plugins/babel", "prettier/plugins/estree", "prettier/plugins/typescript", "prettier/plugins/postcss", "prettier/plugins/html"]
+  "plugins": [
+    "prettier/plugins/babel",
+    "prettier/plugins/estree",
+    "prettier/plugins/typescript",
+    "prettier/plugins/postcss",
+    "prettier/plugins/html"
+  ]
 }

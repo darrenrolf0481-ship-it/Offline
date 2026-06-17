@@ -1,6 +1,6 @@
 name: New Agent Request
 description: Suggest a new agent to add to The Agency
-labels: ["enhancement", "new-agent"]
+labels: ['enhancement', 'new-agent']
 body:
   - type: input
     id: agent-name

@@ -4,6 +4,7 @@ In the following, we provide general instructions on how to connect Serena to yo
 as well as specific instructions for popular clients.
 
 (clients-general-instructions)=
+
 ## General Instructions
 
 In general, Serena can be used with any MCP-enabled client.
@@ -11,20 +12,21 @@ To connect Serena to your favourite client, simply
 
 1. determine how to add a custom MCP server to your client (refer to the client's documentation).
 2. add a new MCP server entry by specifying either
-    * a [run command](start-mcp-server) that allows the client to start the MCP server in stdio mode as a subprocess, or
-    * the URL of the HTTP/SSE endpoint, having started the [Serena MCP server in HTTP/SSE mode](streamable-http) beforehand.
+   - a [run command](start-mcp-server) that allows the client to start the MCP server in stdio mode as a subprocess, or
+   - the URL of the HTTP/SSE endpoint, having started the [Serena MCP server in HTTP/SSE mode](streamable-http) beforehand.
 
 Find concrete examples for popular clients below.
 
 Depending on your needs, you might want to further customize Serena's behaviour by
-* [adding command-line arguments](mcp-args)
-* [adjusting configuration](050_configuration).
+
+- [adding command-line arguments](mcp-args)
+- [adjusting configuration](050_configuration).
 
 **Mode of Operation**.
 Note that some clients have a per-workspace MCP configuration (e.g, VSCode and Claude Code),
 while others have a global MCP configuration (e.g. Codex and Claude Desktop).
 
-- In the per-workspace case, you typically want to start Serena with your workspace directory as the project directory 
+- In the per-workspace case, you typically want to start Serena with your workspace directory as the project directory
   and never switch to a different project. This is achieved by specifying the
   `--project <path>` argument with a single-project [context](#contexts) (e.g. `ide` or `claude-code`).
 - In the global configuration case, you must first activate the project you want to work on, which you can do by asking
@@ -38,6 +40,7 @@ adjust based on which tools are enabled/disabled.
 A key mechanism for this is to use the appropriate [context](#contexts) when starting Serena.
 
 (clients-common-pitfalls)=
+
 ### Common Pitfalls
 
 **Discoverability of the `serena` command**.
@@ -71,16 +74,13 @@ on the Configure button. This will open your global `mcp.json` file, where you c
 
 ```json
 {
-    "servers": {
-      "serena": {
-        "type": "stdio",
-        "command": "serena",
-        "args": [
-          "start-mcp-server",
-          "--context=jb-copilot-plugin"
-        ]
-      }
+  "servers": {
+    "serena": {
+      "type": "stdio",
+      "command": "serena",
+      "args": ["start-mcp-server", "--context=jb-copilot-plugin"]
     }
+  }
 }
 ```
 
@@ -89,20 +89,20 @@ Open Copilot, switch to Agent mode, and click on the configure tools button. You
 the Serena server there (you do not generally have to start Serena in the future, Copilot will start the server by itself). If the server is shown as running, Copilot is successfully connected to Serena. Most models will understand how to use Serena's tools out of the box, but for some models you may have to prompt "Activate the current project with Serena and read initial instructions" in the beginning of the chat.
 
 **Recommended Configuration**.
-The `jb-copilot-plugin` context (see above) comes with our recommended subset of Serena's tools for Copilot in JetBrains IDEs. We also 
-recommend *disabling* the following built-in tools for optimal performance: 
+The `jb-copilot-plugin` context (see above) comes with our recommended subset of Serena's tools for Copilot in JetBrains IDEs. We also
+recommend _disabling_ the following built-in tools for optimal performance:
 replace_string_in_file, apply_patch, list_dir, file_search, grep_search. Note that running subagents may not use MCP servers, consider deactivating the run_subagent tool as well.
 
 Serena offers better alternatives to these basic tools. If you do prefer to use the built-in tools instead,
 you should disable corresponding Serena tools instead to prevent context bloat.
 
-We also recommend marking Serena's tools as approved so you don't have to manually approve them in agent sessions. 
+We also recommend marking Serena's tools as approved so you don't have to manually approve them in agent sessions.
 You can do this in Tools / GitHub Copilot / Chat, where at the bottom you can click on the Configure button for MCP tool auto-approval.
 
 ## Claude Code
 
 Serena is a great way to make Claude Code both more efficient and more powerful!
-To set up the Serena MCP server for Claude Code, you can simply run this command: 
+To set up the Serena MCP server for Claude Code, you can simply run this command:
 
     serena setup claude-code
 
@@ -113,12 +113,12 @@ Recent updates to Claude Code (CC) and to the Opus line of models resulted in dr
 adherence to instructions pertaining to Serena's tools.
 
 After extensive analysis, we identified part of the reason to be very long and detailed
-tool descriptions for built-in tools and parts of the default system prompt. 
+tool descriptions for built-in tools and parts of the default system prompt.
 The descriptions of CC's system tools take almost 16k tokens, cannot be adjusted by the user,
 and introduce a very strong bias towards internal tools, making it almost impossible to convince Opus 4.7 to use Serena.
 
 As a workaround, we crafted a system prompt that counteracts this bias.
-When using Serena, we highly recommend that you start CC as 
+When using Serena, we highly recommend that you start CC as
 
 ```shell
 claude --system-prompt="$(serena prompts print-cc-system-prompt-override)"
@@ -134,7 +134,7 @@ but the effect be insufficient for counteracting Claude Code's bias towards inte
 claude mcp add --scope user serena -- serena start-mcp-server --context claude-code --project-from-cwd
 ```
 
-**Per-Project Configuration.** Alternatively, to add Serena only for the current project in the current directory, 
+**Per-Project Configuration.** Alternatively, to add Serena only for the current project in the current directory,
 use the command:
 
 ```shell
@@ -165,50 +165,50 @@ Claude Code settings file (`.claude/settings.json` in your project directory, or
 
 ```json
 {
-    "hooks": {
-        "PreToolUse": [
-            {
-                "matcher": "",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "serena-hooks remind --client=claude-code"
-                    }
-                ]
-            },
-            {
-                "matcher": "mcp__serena__*",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "serena-hooks auto-approve --client=claude-code"
-                    }
-                ]
-            }
-        ],
-        "SessionStart": [
-            {
-                "matcher": "",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "serena-hooks activate --client=claude-code"
-                    }
-                ]
-            }
-        ],
-        "SessionEnd": [
-            {
-                "matcher": "",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "serena-hooks cleanup --client=claude-code"
-                    }
-                ]
-            }
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "serena-hooks remind --client=claude-code"
+          }
         ]
-    }
+      },
+      {
+        "matcher": "mcp__serena__*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "serena-hooks auto-approve --client=claude-code"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "serena-hooks activate --client=claude-code"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "serena-hooks cleanup --client=claude-code"
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 
@@ -252,7 +252,6 @@ of Serena's tools, either by failing to load them in the beginning or by forgett
 (a behaviour known as agent drift). To counteract this, we provide reminder hooks. We **strongly recommend** setting
 up the hooks as below (or a variation thereof) for optimal performance of Serena in VSCode.
 
-
 The hooks will:
 
 - **`remind`**: Nudge the agent to use Serena's symbolic tools when it makes too many consecutive
@@ -264,26 +263,26 @@ To set this up, create the file `~/.copilot/hooks/serena-hooks.json` with the fo
 
 ```json
 {
-    "hooks": {
-        "PreToolUse": [
-            {
-                "type": "command",
-                "command": "serena-hooks remind --client=vscode"
-            }
-        ],
-        "SessionStart": [
-            {
-                "type": "command",
-                "command": "serena-hooks activate --client=vscode"
-            }
-        ],
-        "Stop": [
-            {
-                "type": "command",
-                "command": "serena-hooks cleanup --client=vscode"
-            }
-        ]
-    }
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "serena-hooks remind --client=vscode"
+      }
+    ],
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "serena-hooks activate --client=vscode"
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "serena-hooks cleanup --client=vscode"
+      }
+    ]
+  }
 }
 ```
 
@@ -297,7 +296,6 @@ Use the interactive `/mcp add` slash command, choose Serena as the name, STDIO a
 that Serena is running if everything is set up correctly or display an error otherwise.
 
 You should add the same **hooks** as in VSCode (see above) if Copilot CLI didn't pick them up automatically.
-
 
 ## Codex (CLI and App)
 
@@ -332,40 +330,40 @@ Then create `~/.codex/hooks.json` with the following content:
 
 ```json
 {
-    "hooks": {
-        "PreToolUse": [
-            {
-                "matcher": "Bash",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "serena-hooks remind --client=codex"
-                    }
-                ]
-            }
-        ],
-        "SessionStart": [
-            {
-                "matcher": "startup|resume",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "serena-hooks activate --client=codex"
-                    }
-                ]
-            }
-        ],
-        "Stop": [
-            {
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "serena-hooks cleanup --client=codex"
-                    }
-                ]
-            }
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "serena-hooks remind --client=codex"
+          }
         ]
-    }
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "serena-hooks activate --client=codex"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "serena-hooks cleanup --client=codex"
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 
@@ -395,10 +393,7 @@ Add the `serena` MCP server configuration
   "mcpServers": {
     "serena": {
       "command": "serena",
-      "args": [
-        "start-mcp-server",
-        "--context=claude-desktop"
-      ]
+      "args": ["start-mcp-server", "--context=claude-desktop"]
     }
   }
 }
@@ -419,7 +414,7 @@ After restarting, you should see Serena's tools in your chat interface (notice t
 
 ## Copilot CLI
 
-In the interactive mode, you can call `/mcp add` from within the copilot CLI. There, use serena as name, 
+In the interactive mode, you can call `/mcp add` from within the copilot CLI. There, use serena as name,
 STDIO as the server type, and `serena start-mcp-server --context=copilot-cli --project-from-cwd` as command.
 
 Alternatively, add the following to `~/.copilot/mcp-config.json` (create the file if it does not exist):
@@ -430,14 +425,8 @@ Alternatively, add the following to `~/.copilot/mcp-config.json` (create the fil
     "serena": {
       "type": "stdio",
       "command": "serena",
-      "tools": [
-        "*"
-      ],
-      "args": [
-        "start-mcp-server",
-        "--context=copilot-cli",
-        "--project-from-cwd"
-      ]
+      "tools": ["*"],
+      "args": ["start-mcp-server", "--context=copilot-cli", "--project-from-cwd"]
     }
   }
 }
@@ -446,38 +435,31 @@ Alternatively, add the following to `~/.copilot/mcp-config.json` (create the fil
 **Verification.**
 Copilot should now show that Serena is running, though you may have to restart it.
 
-
 ## JetBrains Junie
 
-For the Junie plugin in JetBrains IDEs you can add Serena either to the global configuration in `~/.junie/mcp/mcp.json` 
+For the Junie plugin in JetBrains IDEs you can add Serena either to the global configuration in `~/.junie/mcp/mcp.json`
 or to the project configuration in `<project>/.junie/mcp/mcp.json`. Important, don't add both!
 In both cases the entry should be:
-
 
 ```json
 {
   "mcpServers": {
     "serena": {
       "command": "serena",
-      "args": [
-        "start-mcp-server",
-        "--context=junie",
-        "--project-from-cwd"
-      ]
+      "args": ["start-mcp-server", "--context=junie", "--project-from-cwd"]
     }
   }
 }
 ```
 
 With the global configuration, Serena will be available in all projects. However,
-within the Junie plugin, projects will not be automatically activated in Serena. 
-You may thus have to prompt 
+within the Junie plugin, projects will not be automatically activated in Serena.
+You may thus have to prompt
 Junie to "Activate the current project using serena's activation tool" at the start of each session (though some models are
 smart enough to activate the project automatically).
 
 With the project-scoped configuration, Serena will be available only in that project, and the project will automatically
 be recognized as active by Serena.
-
 
 ## JetBrains AI Assistant
 
@@ -488,17 +470,13 @@ Go to Settings / Tools / AI Assistant / MCP and enter the following configuratio
   "mcpServers": {
     "serena": {
       "command": "serena",
-      "args": [
-        "start-mcp-server",
-        "--context=jb-ai-assistant",
-        "--project-from-cwd"
-      ]
+      "args": ["start-mcp-server", "--context=jb-ai-assistant", "--project-from-cwd"]
     }
   }
 }
 ```
 
-Like for Junie, you have the choice between the global and the project-scoped configuration, 
+Like for Junie, you have the choice between the global and the project-scoped configuration,
 with the same trade-off.
 
 ## Antigravity
@@ -510,17 +488,13 @@ Add this configuration:
   "mcpServers": {
     "serena": {
       "command": "serena",
-      "args": [
-        "start-mcp-server",
-        "--context=antigravity"
-      ]
+      "args": ["start-mcp-server", "--context=antigravity"]
     }
   }
 }
 ```
 
 You will have to prompt Antigravity's agent to "Activate the current project using serena's activation tool" after starting Antigravity in the project directory (once in the first chat enough, all other chat sessions will continue using the same Serena session).
-
 
 Unlike VSCode, Antigravity does not currently support including the working directory in the MCP configuration.
 Also, the current client will be shown as `none` in Serena's dashboard (Antigravity currently does not fully support the MCP specifications). This is not a problem, all tools will work as expected.
@@ -533,16 +507,16 @@ For other clients, follow the [general instructions](#clients-general-instructio
 
 There are many terminal-based coding assistants that support MCP servers, such as
 
- * [Gemini-CLI](https://github.com/google-gemini/gemini-cli), 
- * [Qwen3-Coder](https://github.com/QwenLM/Qwen3-Coder),
- * [rovodev](https://community.atlassian.com/forums/Rovo-for-Software-Teams-Beta/Introducing-Rovo-Dev-CLI-AI-Powered-Development-in-your-terminal/ba-p/3043623),
- * [OpenHands CLI](https://docs.all-hands.dev/usage/how-to/cli-mode) and
- * [opencode](https://github.com/sst/opencode).
+- [Gemini-CLI](https://github.com/google-gemini/gemini-cli),
+- [Qwen3-Coder](https://github.com/QwenLM/Qwen3-Coder),
+- [rovodev](https://community.atlassian.com/forums/Rovo-for-Software-Teams-Beta/Introducing-Rovo-Dev-CLI-AI-Powered-Development-in-your-terminal/ba-p/3043623),
+- [OpenHands CLI](https://docs.all-hands.dev/usage/how-to/cli-mode) and
+- [opencode](https://github.com/sst/opencode).
 
 They generally benefit from the symbolic tools provided by Serena. You might want to customize some aspects of Serena
 by writing your own context, modes or prompts to adjust it to the client's respective internal capabilities (and your general workflow).
 
-In most cases, the `ide` context is likely to be appropriate for such clients, i.e. add the arguments `--context ide` 
+In most cases, the `ide` context is likely to be appropriate for such clients, i.e. add the arguments `--context ide`
 in order to reduce tool duplication.
 
 ### MCP-Enabled IDEs and Coding Clients (Cline, Roo-Code, Cursor, Windsurf, etc.)
@@ -550,7 +524,7 @@ in order to reduce tool duplication.
 Most of the popular existing coding assistants (e.g. IDE extensions) and AI-enabled IDEs themselves support connections
 to MCP Servers. Serena generally boosts performance by providing efficient tools for symbolic operations.
 
-We generally recommend using the `ide` context for these integrations by adding the arguments `--context ide` 
+We generally recommend using the `ide` context for these integrations by adding the arguments `--context ide`
 in order to reduce tool duplication.
 
 ### Local GUIs and Agent Frameworks
@@ -559,10 +533,10 @@ Over the last months, several technologies have emerged that allow you to run a 
 and connect it to an MCP server. The respective applications will typically work with Serena out of the box.
 Some of the leading open source GUI applications are
 
-  * [Jan](https://jan.ai/docs/mcp), 
-  * [OpenHands](https://github.com/All-Hands-AI/OpenHands/),
-  * [OpenWebUI](https://docs.openwebui.com/openapi-servers/mcp) and 
-  * [Agno](https://docs.agno.com/introduction/playground).
+- [Jan](https://jan.ai/docs/mcp),
+- [OpenHands](https://github.com/All-Hands-AI/OpenHands/),
+- [OpenWebUI](https://docs.openwebui.com/openapi-servers/mcp) and
+- [Agno](https://docs.agno.com/introduction/playground).
 
-These applications allow combining Serena with almost any LLM (including locally running ones) 
+These applications allow combining Serena with almost any LLM (including locally running ones)
 and offer various other integrations.

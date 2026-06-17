@@ -1,7 +1,9 @@
 # Serena Repository Structure
 
 ## Overview
+
 Serena is a multi-language code assistant that combines two main components:
+
 1. **Serena Core** - The main agent framework with tools and MCP server
 2. **SolidLSP** - A unified Language Server Protocol wrapper for multiple programming languages
 
@@ -11,7 +13,7 @@ Serena is a multi-language code assistant that combines two main components:
 serena/
 ├── src/                          # Main source code
 │   ├── serena/                   # Serena agent framework
-│   ├── solidlsp/                 # LSP wrapper library  
+│   ├── solidlsp/                 # LSP wrapper library
 │   └── interprompt/              # Multi-language prompt templates
 ├── test/                         # Test suites
 │   ├── serena/                   # Serena agent tests
@@ -27,6 +29,7 @@ serena/
 ## Source Code Organization
 
 ### Serena Core (`src/serena/`)
+
 - **`agent.py`** - Main SerenaAgent class that orchestrates everything
 - **`tools/`** - MCP tools for file operations, symbols, memory, etc.
   - `file_tools.py` - File system operations (read, write, search)
@@ -42,6 +45,7 @@ serena/
 - **`cli.py`** - Command-line interface
 
 ### SolidLSP (`src/solidlsp/`)
+
 - **`ls.py`** - Main SolidLanguageServer class
 - **`language_servers/`** - Language-specific implementations
   - `csharp_language_server.py` - C# (Microsoft.CodeAnalysis.LanguageServer)
@@ -55,13 +59,16 @@ serena/
 - **`ls_utils.py`** - Utilities for working with LSP data
 
 ### Interprompt (`src/interprompt/`)
+
 - Multi-language prompt template system
 - Jinja2-based templating with language fallbacks
 
 ## Test Structure
 
 ### Language Server Tests (`test/solidlsp/`)
+
 Each language has its own test directory:
+
 ```
 test/solidlsp/
 ├── csharp/
@@ -74,7 +81,9 @@ test/solidlsp/
 ```
 
 ### Test Resources (`test/resources/repos/`)
+
 Contains minimal test projects for each language:
+
 ```
 test/resources/repos/
 ├── csharp/test_repo/
@@ -88,6 +97,7 @@ test/resources/repos/
 ```
 
 ### Test Infrastructure
+
 - **`test/conftest.py`** - Shared test fixtures and utilities
 - **`create_ls()`** function - Creates language server instances for testing
 - **`language_server` fixture** - Parametrized fixture for multi-language tests
@@ -101,6 +111,7 @@ test/resources/repos/
 ## Dependencies Management
 
 The project uses modern Python tooling:
+
 - **uv** for fast dependency resolution and virtual environments
 - **pytest** for testing with language-specific markers (`@pytest.mark.csharp`)
 - **ruff** for linting and formatting

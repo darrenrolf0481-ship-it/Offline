@@ -16,4 +16,4 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           draft: true
-          body: "See [change log](https://github.com/oraios/serena/blob/main/CHANGELOG.md)"
+          body: 'See [change log](https://github.com/oraios/serena/blob/main/CHANGELOG.md)'

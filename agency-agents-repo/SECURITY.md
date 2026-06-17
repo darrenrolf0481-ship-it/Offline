@@ -15,10 +15,12 @@ If you discover a security vulnerability in this project, please report it respo
 This repository contains Markdown-based agent definitions and shell scripts for installation and conversion.
 
 ### Agent files (.md)
+
 - Non-executable prompt definitions
 - No API keys, secrets, or credentials should be stored in agent files
 
 ### Shell scripts (scripts/)
+
 - install.sh, convert.sh, and lint-agents.sh are executable
 - Contributors should review scripts for unintended behavior before running
 
@@ -28,4 +30,4 @@ This repository contains Markdown-based agent definitions and shell scripts for 
 - Never add executable code inside agent Markdown files
 - Shell scripts must be reviewed before merging
 - Report suspicious agent definitions that attempt prompt injection
-EOFcat SECURITY.md
+  EOFcat SECURITY.md

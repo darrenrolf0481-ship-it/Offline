@@ -8,9 +8,8 @@
 # Copilot CLI (GPT-5.4, medium)
 
 > As a coding agent, I’d absolutely ask my owner to add Serena because it makes me noticeably sharper and calmer on
-real code—especially symbol-aware navigation, cross-file refactors, and monorepo dependency jumps—while I still lean
-on built-ins for tiny text edits and non-code work
-
+> real code—especially symbol-aware navigation, cross-file refactors, and monorepo dependency jumps—while I still lean
+> on built-ins for tiny text edits and non-code work
 
 **Baseline.** I started from source code only, avoided repo docs/notes, and ran each reversible experiment against the repo directly. After every edit/refactor experiment, the working tree returned to its baseline state.
 
@@ -28,13 +27,13 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 
 ## 2. Added value and differences by area
 
-| Area | What changed vs built-ins | Frequency | Value per hit |
-| --- | --- | --- | --- |
-| **Cross-file symbol refactors** | `rename`, file `move`, and `inline` turned manual search/edit/update chains into one semantic op. The `wait -> delay` rename updated 4 files from 1 symbol definition; moving `http.ts` updated the importing file automatically. | Medium | High: typically **2-5 calls saved** plus less manual scope checking |
-| **Code-only discovery** | Symbol overview, symbol body retrieval, reference search, and type hierarchy returned code structure directly instead of raw text matches. For `wait`, Serena returned **3 real code-use files**; `rg` returned **7 files**, including docs/comments and English-word hits. | High | Medium: usually **1-3 follow-up reads/filters avoided** |
-| **Stable addressing** | Name paths stayed reusable across multiple edits (`createMainWindow`, `openStreetMapUserAgent`, `wait`); built-in line ranges had to be reacquired after edits. | Medium | Medium: less re-reading, less stale-context risk |
-| **Small in-method edits** | Serena was not more efficient. Replacing `AutoLauncher/toggleAutoLaunch` required resending the full method body, while the built-in patch changed only the touched lines. | High | Low negative: built-ins used **smaller edit payloads** |
-| **External dependency lookup in a monorepo** | Once indexing was available, Serena resolved Electron types from `desktop/node_modules`, `next-electron-server` declarations from the desktop package, and Rust crate symbols from Cargo registry sources. In a monorepo, that removes a manual "which package owns this dependency?" step. | Medium | Medium-High: usually **1-3 searches plus path discovery avoided** |
+| Area                                         | What changed vs built-ins                                                                                                                                                                                                                                                                   | Frequency | Value per hit                                                       |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------- |
+| **Cross-file symbol refactors**              | `rename`, file `move`, and `inline` turned manual search/edit/update chains into one semantic op. The `wait -> delay` rename updated 4 files from 1 symbol definition; moving `http.ts` updated the importing file automatically.                                                           | Medium    | High: typically **2-5 calls saved** plus less manual scope checking |
+| **Code-only discovery**                      | Symbol overview, symbol body retrieval, reference search, and type hierarchy returned code structure directly instead of raw text matches. For `wait`, Serena returned **3 real code-use files**; `rg` returned **7 files**, including docs/comments and English-word hits.                 | High      | Medium: usually **1-3 follow-up reads/filters avoided**             |
+| **Stable addressing**                        | Name paths stayed reusable across multiple edits (`createMainWindow`, `openStreetMapUserAgent`, `wait`); built-in line ranges had to be reacquired after edits.                                                                                                                             | Medium    | Medium: less re-reading, less stale-context risk                    |
+| **Small in-method edits**                    | Serena was not more efficient. Replacing `AutoLauncher/toggleAutoLaunch` required resending the full method body, while the built-in patch changed only the touched lines.                                                                                                                  | High      | Low negative: built-ins used **smaller edit payloads**              |
+| **External dependency lookup in a monorepo** | Once indexing was available, Serena resolved Electron types from `desktop/node_modules`, `next-electron-server` declarations from the desktop package, and Rust crate symbols from Cargo registry sources. In a monorepo, that removes a manual "which package owns this dependency?" step. | Medium    | Medium-High: usually **1-3 searches plus path discovery avoided**   |
 
 **Verdict:** Serena's highest-value delta was semantic refactoring plus dependency-aware code lookup in the TypeScript/Rust parts of the monorepo; its weakest area was tiny local edits.
 
@@ -58,8 +57,8 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 - **Serena chain:** `get_symbols_overview(main.ts, depth=1)` -> concise symbol map of top-level functions and nested locals under `main`; next step `find_symbol(createMainWindow, include_body=true)`.
 - **Built-in chain:** `rg` on `const|function|class|export` in `main.ts` -> flat text hits; next step `view` of lines `331-439` to read `createMainWindow`.
 - **Payloads observed:**
-    - Serena overview output: compact symbol list for the file; next-step body fetch returned only the selected symbol body.
-    - Built-in overview output: many matching lines without structure; next-step read required **~109 lines** of file content.
+  - Serena overview output: compact symbol list for the file; next-step body fetch returned only the selected symbol body.
+  - Built-in overview output: many matching lines without structure; next-step read required **~109 lines** of file content.
 - **Delta:** Serena's overview was not just shorter; it also supplied **stable symbol names** for the follow-up call. Built-ins could answer the question, but only after a second text-localizing step.
 
 **Verdict:** Serena materially improved the "overview -> inspect one function" flow by making the follow-up call symbol-based instead of line-based.
@@ -70,8 +69,8 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 - **Serena chain:** `find_symbol(AutoLauncher/toggleAutoLaunch, include_body=true)` -> exact method body.
 - **Built-in chain:** `view` of the relevant file range (`20-40`) after locating the method.
 - **Payloads observed:**
-    - Serena returned the **10-line method body** only.
-    - Built-in read returned **21 lines** of surrounding class context.
+  - Serena returned the **10-line method body** only.
+  - Built-in read returned **21 lines** of surrounding class context.
 - **Delta:** Serena saved one localization step and avoided unrelated lines.
 
 **Verdict:** Serena added a real but modest efficiency gain for targeted method retrieval.
@@ -81,13 +80,13 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 - **Target symbol:** `wait` in `desktop/src/main/utils/common.ts`.
 - **Serena chain:** `find_referencing_symbols(wait)` -> 3 files with symbol contexts: `main.ts`, `ffmpeg-worker.ts`, `ml-worker.ts`.
 - **Built-in chain:** `rg \bwait\b desktop/src` -> 7 files including:
-    - real uses/imports,
-    - comments/doc strings (`preload.ts`, `watch.ts`, `main.ts` prose),
-    - the definition itself,
-    - doc mentions in `desktop/docs/release.md` when searching broader scope.
+  - real uses/imports,
+  - comments/doc strings (`preload.ts`, `watch.ts`, `main.ts` prose),
+  - the definition itself,
+  - doc mentions in `desktop/docs/release.md` when searching broader scope.
 - **Payloads observed:**
-    - Serena: one structured result grouped by referencing symbol.
-    - Built-ins: one broader result, but it needed human filtering to answer "who uses this in code?"
+  - Serena: one structured result grouped by referencing symbol.
+  - Built-ins: one broader result, but it needed human filtering to answer "who uses this in code?"
 - **Delta:** Serena improved **precision**, not just convenience. For the code-only question, built-ins needed extra filtering or extra reads.
 
 **Verdict:** Serena clearly improved reference search when the question is semantic ("who uses this in code?") rather than textual.
@@ -106,17 +105,17 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 
 - **Targets used after indexing was available:** `BrowserWindow` and `serveNextAt` in the desktop TypeScript app, plus `Url` and `Zeroizing` in `rust/core`.
 - **Serena chain (TS):**
-    - `find_declaration(new BrowserWindow(...), include_body=true)` -> `desktop/node_modules/electron/electron.d.ts`, body `class BrowserWindow extends Electron.BrowserWindow {}`
-    - `find_declaration(import serveNextAt ... , include_body=true)` -> `desktop/node_modules/next-electron-server/index.d.ts`, body `declare function serveNextAt(uri: string, options?: Options): void;`
-    - `find_symbol(..., search_deps=true)` on those dependency files returned dependency-side docs.
+  - `find_declaration(new BrowserWindow(...), include_body=true)` -> `desktop/node_modules/electron/electron.d.ts`, body `class BrowserWindow extends Electron.BrowserWindow {}`
+  - `find_declaration(import serveNextAt ... , include_body=true)` -> `desktop/node_modules/next-electron-server/index.d.ts`, body `declare function serveNextAt(uri: string, options?: Options): void;`
+  - `find_symbol(..., search_deps=true)` on those dependency files returned dependency-side docs.
 - **Serena chain (Rust):**
-    - `find_declaration(use reqwest::{Response, Url};, include_body=true)` -> `<ext:lib.rs|...>` external symbol `Url[0]` with the struct body
-    - `find_declaration(use zeroize::Zeroizing;, include_body=true)` -> `<ext:lib.rs|...>` external symbol `Zeroizing[0]` with the struct body
-    - `find_symbol(..., relative_path=<ext...>, search_deps=true)` returned dependency-side docs for those external symbols.
+  - `find_declaration(use reqwest::{Response, Url};, include_body=true)` -> `<ext:lib.rs|...>` external symbol `Url[0]` with the struct body
+  - `find_declaration(use zeroize::Zeroizing;, include_body=true)` -> `<ext:lib.rs|...>` external symbol `Zeroizing[0]` with the struct body
+  - `find_symbol(..., relative_path=<ext...>, search_deps=true)` returned dependency-side docs for those external symbols.
 - **Built-in equivalent chain:**
-    - Manually infer the correct monorepo-local dependency root (`desktop/node_modules`, not repo root),
-    - or manually inspect Cargo metadata / `Cargo.lock`,
-    - then open the resolved dependency files directly (for Rust, under the Cargo registry).
+  - Manually infer the correct monorepo-local dependency root (`desktop/node_modules`, not repo root),
+  - or manually inspect Cargo metadata / `Cargo.lock`,
+  - then open the resolved dependency files directly (for Rust, under the Cargo registry).
 - **Payloads observed:** Serena returned the declaration target and a small signature/body directly; built-ins required **package-root discovery first**, which is a real extra step in a monorepo.
 - **Delta:** Serena **does add capability and efficiency here** once indexing exists. The gain is larger in this monorepo than in a single-package repo because dependency ownership is split across package-local Node dependencies and shared Cargo registry sources.
 
@@ -130,8 +129,8 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 - **Built-in chain:** `view(auto-launcher.ts, 20-40)` -> `apply_patch` on 3 changed lines -> `git diff`.
 - **Serena chain:** `find_symbol(toggleAutoLaunch, include_body=true)` -> `replace_symbol_body(toggleAutoLaunch)` -> `git diff`.
 - **Payloads observed:**
-    - Built-ins: read **21 lines**, patch changed **3 logical lines**.
-    - Serena: fetched **10-line body**, resent **full 10-line body**.
+  - Built-ins: read **21 lines**, patch changed **3 logical lines**.
+  - Serena: fetched **10-line body**, resent **full 10-line body**.
 - **Delta:** same result, same number of main steps, but the symbolic edit resent untouched lines.
 
 **Verdict:** For tiny in-method tweaks, built-ins were more payload-efficient and Serena added no real workflow advantage.
@@ -142,8 +141,8 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 - **Built-in chain:** `view(main.ts, 500-540)` -> `apply_patch` replacing the function body -> `git diff`.
 - **Serena chain:** `find_symbol(uniqueSavePath, include_body=true)` -> `replace_symbol_body(uniqueSavePath)` -> `git diff`.
 - **Payloads observed:**
-    - Built-ins: read **41 lines** to safely anchor a **~10-line** rewrite.
-    - Serena: fetched the **11-line symbol body** and resent the rewritten body only.
+  - Built-ins: read **41 lines** to safely anchor a **~10-line** rewrite.
+  - Serena: fetched the **11-line symbol body** and resent the rewritten body only.
 - **Delta:** Here Serena was more efficient: less prerequisite read volume and no dependence on surrounding file context.
 
 **Verdict:** Serena was better for medium symbol-sized rewrites.
@@ -154,8 +153,8 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 - **Built-in chain:** `view(main.ts, 331-439)` -> `apply_patch` replacing the function body -> `git diff`.
 - **Serena chain:** `find_symbol(createMainWindow, include_body=true)` -> `replace_symbol_body(createMainWindow)` -> `git diff`.
 - **Payloads observed:**
-    - Built-ins: read **~109 lines** and patched the whole function.
-    - Serena: fetched the **same symbol body** and resent the whole rewritten body.
+  - Built-ins: read **~109 lines** and patched the whole function.
+  - Serena: fetched the **same symbol body** and resent the whole rewritten body.
 - **Delta:** Serena still avoided a file-range read, but once the symbol itself dominates the payload, the token gap mostly disappears.
 
 **Verdict:** For whole-body rewrites, Serena's gain was modest: better addressing, not dramatically smaller payload.
@@ -166,8 +165,8 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 - **Built-in chain:** `view(common.ts, 1-40)` -> `apply_patch` inserting after the existing function.
 - **Serena chain:** `find_symbol(wait)` -> `insert_after_symbol(wait)`.
 - **Payloads observed:**
-    - Built-ins: read **26 lines** to place a **1-line** function.
-    - Serena: no extra file-range read once the symbol name was known.
+  - Built-ins: read **26 lines** to place a **1-line** function.
+  - Serena: no extra file-range read once the symbol name was known.
 - **Delta:** Serena made the location structural instead of textual.
 
 **Verdict:** Serena improved insertions when the location is "after symbol X" rather than "after line Y".
@@ -178,8 +177,8 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 - **Built-in chain:** `view`/`rg` to find call site + definition -> `apply_patch` updating both.
 - **Serena chain:** `rename(openStreetMapUserAgent -> buildOpenStreetMapUserAgent)`.
 - **Payloads observed:**
-    - Built-ins: two textual sites had to be found and updated manually.
-    - Serena: one rename call, terse success response (`"Success"`).
+  - Built-ins: two textual sites had to be found and updated manually.
+  - Serena: one rename call, terse success response (`"Success"`).
 - **Delta:** small call-count improvement, larger correctness improvement when the file is bigger or the name is less unique.
 
 **Verdict:** Serena was somewhat better even for single-file private renames because it removed manual site enumeration.
@@ -192,8 +191,8 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 - **Built-in chain:** read `common.ts`, `main.ts`, `ffmpeg-worker.ts`, `ml-worker.ts` -> one multi-file `apply_patch` -> `git diff`.
 - **Serena chain:** `rename(wait -> delay)` on the defining symbol -> `git diff`.
 - **Payloads observed:**
-    - Built-ins: required reading **4 files** and manually updating export, imports, and call sites.
-    - Serena: one semantic rename updated the same 4 files.
+  - Built-ins: required reading **4 files** and manually updating export, imports, and call sites.
+  - Serena: one semantic rename updated the same 4 files.
 - **Success signals:** built-ins only showed success via resulting diff; Serena returned `"Success"`.
 - **Delta:** this is one of Serena's clearest wins: same final diff, far less manual scope work.
 
@@ -276,12 +275,12 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 
 ### By edit size
 
-| Edit size | Built-ins | Serena | More efficient |
-| --- | --- | --- | --- |
-| **Small tweak** (`toggleAutoLaunch`) | Read ~21 lines, patch only changed lines | Fetch 10-line body, resend full 10-line body | **Built-ins** |
-| **Medium rewrite** (`uniqueSavePath`) | Read ~41 lines to safely patch ~10 lines | Fetch 11-line body, resend 11-line body | **Serena** |
-| **Large rewrite** (`createMainWindow`) | Read ~109 lines, patch whole body | Fetch ~same symbol body, resend whole body | **Near tie**, slight Serena advantage only from structural targeting |
-| **Cross-file rename** (`wait -> delay`) | Read 4 files, craft 4-file patch | One rename after discovery | **Serena by a large margin** |
+| Edit size                               | Built-ins                                | Serena                                       | More efficient                                                       |
+| --------------------------------------- | ---------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------- |
+| **Small tweak** (`toggleAutoLaunch`)    | Read ~21 lines, patch only changed lines | Fetch 10-line body, resend full 10-line body | **Built-ins**                                                        |
+| **Medium rewrite** (`uniqueSavePath`)   | Read ~41 lines to safely patch ~10 lines | Fetch 11-line body, resend 11-line body      | **Serena**                                                           |
+| **Large rewrite** (`createMainWindow`)  | Read ~109 lines, patch whole body        | Fetch ~same symbol body, resend whole body   | **Near tie**, slight Serena advantage only from structural targeting |
+| **Cross-file rename** (`wait -> delay`) | Read 4 files, craft 4-file patch         | One rename after discovery                   | **Serena by a large margin**                                         |
 
 ### Forced reads
 
@@ -318,13 +317,13 @@ Two important observed limits constrained Serena's delta here: **the strongest m
 
 ## 7. Unique capabilities
 
-| Capability with no practical one-step built-in equivalent | Frequency | Impact |
-| --- | --- | --- |
-| **Semantic cross-file rename from a single symbol definition** | Medium | High |
-| **Type hierarchy query (implementations / supertypes)** | Low-Medium | Medium |
-| **Inline refactor across call sites** | Low | High when applicable |
-| **File move with import updates** | Low-Medium | High |
-| **External dependency resolution from in-repo code into package-local or registry-backed sources** | Medium | Medium-High |
+| Capability with no practical one-step built-in equivalent                                          | Frequency  | Impact               |
+| -------------------------------------------------------------------------------------------------- | ---------- | -------------------- |
+| **Semantic cross-file rename from a single symbol definition**                                     | Medium     | High                 |
+| **Type hierarchy query (implementations / supertypes)**                                            | Low-Medium | Medium               |
+| **Inline refactor across call sites**                                                              | Low        | High when applicable |
+| **File move with import updates**                                                                  | Low-Medium | High                 |
+| **External dependency resolution from in-repo code into package-local or registry-backed sources** | Medium     | Medium-High          |
 
 Built-ins can approximate all of these manually, but not as a single semantic operation.
 

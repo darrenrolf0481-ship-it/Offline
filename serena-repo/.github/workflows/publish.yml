@@ -10,7 +10,7 @@ jobs:
     name: Publish the serena-agent package
     runs-on: ubuntu-latest
     permissions:
-      id-token: write  # Required for trusted publishing
+      id-token: write # Required for trusted publishing
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v6
         with:
-          version: "latest"
+          version: 'latest'
 
       - name: Build package
         run: uv build

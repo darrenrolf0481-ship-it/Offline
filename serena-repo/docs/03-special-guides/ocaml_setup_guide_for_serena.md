@@ -5,6 +5,7 @@ This guide explains how to set up an OCaml project so that Serena can provide co
 Unlike some other languages, Serena does not download the OCaml language server automatically. You must install it yourself via opam, as OCaml tooling is compiled from source against your specific environment.
 
 ---
+
 ## Prerequisites
 
 Install the following on your system and ensure they are available on `PATH`:
@@ -21,15 +22,18 @@ Install the following on your system and ensure they are available on `PATH`:
 - **dune** (build system, via opam)
 
 ---
+
 ## Installation
 
 1. Initialize opam if you haven't already:
+
    ```bash
    opam init
    eval $(opam env)
    ```
 
 2. Create an opam switch with a compatible OCaml version:
+
    ```bash
    # For cross-file reference support (recommended)
    opam switch create serena-ocaml ocaml-base-compiler.5.2.1
@@ -41,6 +45,7 @@ Install the following on your system and ensure they are available on `PATH`:
    ```
 
 3. Install the language server and build tools:
+
    ```bash
    opam install ocaml-lsp-server dune
    ```
@@ -52,6 +57,7 @@ Install the following on your system and ensure they are available on `PATH`:
    ```
 
 ---
+
 ## Cross-File References
 
 Cross-file reference support (finding all usages of a symbol across your project) requires:
@@ -63,6 +69,7 @@ Cross-file reference support (finding all usages of a symbol across your project
 When these requirements are met, Serena automatically builds the cross-file index during startup via `dune build @ocaml-index`. Without these versions, references are limited to the current file.
 
 ---
+
 ## Using Serena with OCaml
 
 - Serena automatically detects OCaml files (`*.ml`, `*.mli`) and Reason files (`*.re`, `*.rei`).
@@ -70,17 +77,19 @@ When these requirements are met, Serena automatically builds the cross-file inde
 - Ensure your project builds successfully with `dune build` before using Serena for best results.
 
 ---
+
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| "opam not found" | Install opam and add it to PATH |
+| Problem                       | Solution                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| "opam not found"              | Install opam and add it to PATH                                            |
 | "OCaml 5.1.0 is incompatible" | Create a new switch: `opam switch create <name> ocaml-base-compiler.5.2.1` |
-| "ocaml-lsp-server not found" | `opam install ocaml-lsp-server` |
-| Cross-file refs not working | Ensure OCaml >= 5.2 and ocaml-lsp-server >= 1.23.0; run `dune build` first |
-| Stale index | Rebuild with `dune build @ocaml-index` |
+| "ocaml-lsp-server not found"  | `opam install ocaml-lsp-server`                                            |
+| Cross-file refs not working   | Ensure OCaml >= 5.2 and ocaml-lsp-server >= 1.23.0; run `dune build` first |
+| Stale index                   | Rebuild with `dune build @ocaml-index`                                     |
 
 ---
+
 ## Reference
 
 - opam: https://opam.ocaml.org

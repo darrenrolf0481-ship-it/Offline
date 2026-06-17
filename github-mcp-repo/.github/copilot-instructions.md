@@ -5,6 +5,7 @@
 This is the **GitHub MCP Server**, a Model Context Protocol (MCP) server that connects AI tools to GitHub's platform. It enables AI agents to manage repositories, issues, pull requests, workflows, and more through natural language.
 
 **Key Details:**
+
 - **Language:** Go 1.24+ (~38k lines of code)
 - **Type:** MCP server application with CLI interface
 - **Primary Package:** github-mcp-server (stdio MCP server - **this is the main focus**)
@@ -14,6 +15,7 @@ This is the **GitHub MCP Server**, a Model Context Protocol (MCP) server that co
 - **Library Usage:** This repository is also used as a library by the remote server. Functions that could be called by other repositories should be exported (capitalized), even if not required internally. Preserve existing export patterns.
 
 **Code Quality Standards:**
+
 - **Popular Open Source Repository** - High bar for code quality and clarity
 - **Comprehension First** - Code must be clear to a wide audience
 - **Clean Commits** - Atomic, focused changes with clear messages
@@ -35,6 +37,7 @@ This is the **GitHub MCP Server**, a Model Context Protocol (MCP) server that co
 ### When Modifying MCP Tools/Endpoints
 
 If you change any MCP tool definitions or schemas:
+
 1. Run tests with `UPDATE_TOOLSNAPS=true go test ./...` to update toolsnaps
 2. Commit the updated `.snap` files in `pkg/github/__toolsnaps__/`
 3. Run `script/generate-docs` to update README.md
@@ -97,7 +100,7 @@ go test ./pkg/github -run TestGetMe
 - **Dockerfile:** Multi-stage build (golang:1.25.8-alpine → distroless)
 - **server.json:** MCP server metadata for registry
 - **.goreleaser.yaml:** Release automation config
-- **.gitignore:** Excludes bin/, dist/, vendor/, *.DS_Store, github-mcp-server binary
+- **.gitignore:** Excludes bin/, dist/, vendor/, \*.DS_Store, github-mcp-server binary
 
 ### Important Scripts (script/ directory)
 
@@ -210,7 +213,7 @@ All workflows run on push/PR unless noted. Located in `.github/workflows/`:
 2. Run `go mod tidy`
 3. Run `script/licenses` to update license files
 4. Run `script/test` to verify nothing broke
-5. Commit go.mod, go.sum, and third-party-licenses* files
+5. Commit go.mod, go.sum, and third-party-licenses\* files
 
 ## Common Errors & Solutions
 
@@ -233,6 +236,7 @@ All workflows run on push/PR unless noted. Located in `.github/workflows/`:
 ### Test failures after changing a tool
 
 **Likely causes:**
+
 1. Forgot to update toolsnaps - run with `UPDATE_TOOLSNAPS=true`
 2. Changed behavior broke existing tests - verify intent and fix tests
 3. Schema change not reflected in test - update test expectations
@@ -250,6 +254,7 @@ All workflows run on push/PR unless noted. Located in `.github/workflows/`:
 ## Key Files Reference
 
 ### Root Directory Files
+
 ```
 .dockerignore        - Docker build exclusions
 .gitignore          - Git exclusions (includes bin/, dist/, vendor/, binaries)
@@ -270,6 +275,7 @@ server.json         - MCP server registry metadata
 ### Main Entry Point
 
 `cmd/github-mcp-server/main.go` - Uses cobra for CLI, viper for config, supports:
+
 - `stdio` command (default) - MCP stdio transport
 - `generate-docs` command - Documentation generation
 - Flags: --toolsets, --read-only, --gh-host, --log-file

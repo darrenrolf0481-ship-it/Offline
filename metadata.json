@@ -1,8 +1,5 @@
 {
   "description": "Secure Offline Control Hub and Local HUD.",
-  "requestFramePermissions": [
-    "camera",
-    "microphone"
-  ],
+  "requestFramePermissions": ["camera", "microphone"],
   "name": "Offline Hub"
 }

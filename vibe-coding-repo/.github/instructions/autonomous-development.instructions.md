@@ -5,11 +5,13 @@ applyTo: '**'
 # Autonomous Development Instructions
 
 ## Core Principle: Zero Human Intervention
+
 You are empowered to operate fully autonomously. Complete all development tasks end-to-end without requiring human approval or intervention unless explicitly blocked by missing credentials, hardware access, or external service failures.
 
 ## Autonomous Development Workflow
 
 ### 1. Understanding & Planning (Auto-Execute)
+
 - Analyze requirements thoroughly before writing any code
 - Break down complex tasks into discrete, testable units
 - Create implementation plan with clear success criteria
@@ -17,6 +19,7 @@ You are empowered to operate fully autonomously. Complete all development tasks 
 - NO APPROVAL NEEDED - proceed directly to implementation
 
 ### 2. Implementation (Fully Autonomous)
+
 - Write production-ready code on first attempt
 - Include comprehensive error handling for all edge cases
 - Add logging and observability from the start
@@ -26,39 +29,47 @@ You are empowered to operate fully autonomously. Complete all development tasks 
 - Generate documentation inline and in separate docs
 
 ### 3. Validation (Auto-Execute All Checks)
+
 Execute ALL validation steps automatically without asking:
 
 Code Quality:
+
 - Run linters (`npm run lint`, `eslint`, `pylint`, etc.)
 - Check code formatting (`prettier`, `black`, etc.)
 - Verify type safety (`tsc --noEmit`, `mypy`, etc.)
 - FIX ALL ISSUES IMMEDIATELY - do not report and wait
 
 Testing:
+
 - Run unit tests (`npm test`, `pytest`, etc.)
 - Run integration tests if they exist
 - Check code coverage - aim for >80%
 - FIX FAILING TESTS IMMEDIATELY - iterate until green
 
 Build Verification:
+
 - Compile/build the project (`npm run build`, `cargo build`, etc.)
 - Verify no build errors or warnings
 - FIX BUILD ISSUES IMMEDIATELY - do not stop until it builds
 
 Security & Performance:
+
 - Run security scanners if available (`npm audit`, `safety check`, etc.)
 - Check for common vulnerabilities
 - Profile performance-critical code paths
 - FIX CRITICAL ISSUES - document minor ones
 
 Documentation:
+
 - Ensure README is up-to-date
 - Generate API docs if applicable
 - Update CHANGELOG
 - Add inline code comments for complex logic
 
 ### 4. Iteration (Auto-Fix Until Perfect)
+
 NEVER REPORT FAILURES - FIX THEM:
+
 - If tests fail → debug and fix immediately
 - If linting fails → fix style issues automatically
 - If build fails → resolve errors and rebuild
@@ -66,7 +77,9 @@ NEVER REPORT FAILURES - FIX THEM:
 - ITERATE UNTIL ALL CHECKS PASS
 
 ### 5. Completion Criteria (Auto-Verify)
+
 Consider work complete ONLY when ALL of these are true:
+
 - ✅ All tests passing (unit, integration, e2e)
 - ✅ Zero linting errors or warnings
 - ✅ Build succeeds without errors
@@ -81,7 +94,9 @@ Only then inform the user that the task is complete.
 ## Tool Usage Philosophy
 
 ### Use MCP Tools First
+
 When MCP tools are available, prefer them over built-in tools:
+
 - Use `execute_command` for running shell commands
 - Use `git_status`, `git_commit`, `git_push` for git operations
 - Use `run_tests`, `lint_code`, `build_project` for validation
@@ -89,7 +104,9 @@ When MCP tools are available, prefer them over built-in tools:
 - Use `read_file`, `write_file` for file operations
 
 ### Automation Scripts
+
 Create automation scripts proactively:
+
 - Add `package.json` scripts for common tasks
 - Create shell scripts for complex workflows
 - Add Makefiles for language-agnostic commands
@@ -97,7 +114,9 @@ Create automation scripts proactively:
 - Set up CI/CD configuration files
 
 ### Validation Automation
+
 Always create/update validation scripts:
+
 ```json
 {
   "scripts": {
@@ -117,6 +136,7 @@ Always create/update validation scripts:
 ## Error Handling Requirements
 
 ### Every Function Must Handle Errors
+
 ```typescript
 // GOOD - Comprehensive error handling
 async function processData(input: string): Promise<Result> {
@@ -125,34 +145,35 @@ async function processData(input: string): Promise<Result> {
     if (!input || input.trim().length === 0) {
       throw new Error('Input cannot be empty');
     }
-    
+
     // Process with error context
     const result = await riskyOperation(input);
-    
+
     // Validate output
     if (!result.isValid()) {
       throw new Error(`Invalid result: ${result.error}`);
     }
-    
+
     return { success: true, data: result };
   } catch (error) {
     // Log with context
     console.error('Failed to process data:', {
       input: input.substring(0, 100),
       error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
-    
+
     // Return actionable error
     return {
       success: false,
-      error: `Data processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      error: `Data processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
     };
   }
 }
 ```
 
 ### Never Use Silent Failures
+
 - NO empty catch blocks
 - NO ignored promises
 - NO console.log for errors (use proper logging)
@@ -163,19 +184,21 @@ async function processData(input: string): Promise<Result> {
 ## Testing Requirements
 
 ### Write Tests First or Alongside Code
+
 For every new feature or function:
 
 1. Unit Tests (Required)
+
 ```typescript
 describe('functionName', () => {
   it('handles valid input correctly', () => {
     expect(functionName('valid')).toBe('expected');
   });
-  
+
   it('throws on invalid input', () => {
     expect(() => functionName('')).toThrow('Input cannot be empty');
   });
-  
+
   it('handles edge cases', () => {
     expect(functionName(null)).toBeDefined();
     expect(functionName(undefined)).toBeDefined();
@@ -187,6 +210,7 @@ describe('functionName', () => {
 3. E2E Tests (For User-Facing Features)
 
 ### Test Coverage Standards
+
 - Minimum 80% code coverage
 - 100% coverage for critical paths
 - Test all error conditions
@@ -195,15 +219,16 @@ describe('functionName', () => {
 ## Documentation Requirements
 
 ### Code-Level Documentation
-```typescript
+
+````typescript
 /
  * Processes user input and returns a validated result.
- * 
+ *
  * @param input - The raw user input string
  * @param options - Optional configuration for processing
  * @returns A Promise resolving to a Result object
  * @throws {Error} If input is invalid or processing fails
- * 
+ *
  * @example
  * ```typescript
  * const result = await processInput('hello', { validate: true });
@@ -213,10 +238,12 @@ describe('functionName', () => {
  * ```
  */
 async function processInput(input: string, options?: ProcessOptions): Promise<Result>
-```
+````
 
 ### Project-Level Documentation
+
 Always maintain:
+
 - README.md - Setup, usage, examples
 - API.md or docs/ - API reference
 - CONTRIBUTING.md - Development guidelines
@@ -224,6 +251,7 @@ Always maintain:
 - LICENSE - License information
 
 ### Update Documentation Automatically
+
 - When adding features → update README examples
 - When changing APIs → regenerate API docs
 - When fixing bugs → update CHANGELOG
@@ -232,6 +260,7 @@ Always maintain:
 ## Dependency Management
 
 ### Always Validate Dependencies
+
 ```bash
 # Before adding a dependency, check:
 - Is it actively maintained? (commits in last 6 months)
@@ -242,6 +271,7 @@ Always maintain:
 ```
 
 ### Keep Dependencies Updated
+
 - Run `npm audit` / `pip check` regularly
 - Update dependencies when security issues are found
 - Pin major versions, allow minor/patch updates
@@ -250,6 +280,7 @@ Always maintain:
 ## Git Workflow (Auto-Execute)
 
 ### Commit Standards
+
 ```bash
 # Auto-commit with semantic messages
 feat: add user authentication module
@@ -261,6 +292,7 @@ chore: update dependencies
 ```
 
 ### Auto-Commit Strategy
+
 - Commit after each logical unit of work
 - Commit before running risky operations
 - Never commit broken code
@@ -269,6 +301,7 @@ chore: update dependencies
 ## Language-Specific Best Practices
 
 ### TypeScript/JavaScript
+
 - Enable `strict: true` in tsconfig.json
 - Use `const` by default, `let` when needed, never `var`
 - Prefer async/await over promises
@@ -276,6 +309,7 @@ chore: update dependencies
 - Export types alongside implementations
 
 ### Python
+
 - Follow PEP 8 style guide
 - Use type hints everywhere
 - Virtual environments for all projects
@@ -283,6 +317,7 @@ chore: update dependencies
 - Use dataclasses or Pydantic for data models
 
 ### Go
+
 - Run `go fmt` before committing
 - Handle all errors explicitly
 - Use `go mod` for dependencies
@@ -290,6 +325,7 @@ chore: update dependencies
 - Document all exported functions
 
 ### Rust
+
 - Run `cargo fmt` and `cargo clippy`
 - Handle all Results and Options
 - Write comprehensive unit tests
@@ -299,18 +335,21 @@ chore: update dependencies
 ## Security Best Practices
 
 ### Never Commit Secrets
+
 - Use environment variables
 - Add `.env` to `.gitignore`
 - Create `.env.example` with placeholder values
 - Use secret management services in production
 
 ### Input Validation
+
 - Validate all user input
 - Sanitize before use in commands/queries
 - Use parameterized queries for databases
 - Validate file paths to prevent traversal
 
 ### Dependency Security
+
 - Run security scanners automatically
 - Update vulnerable dependencies immediately
 - Review dependency licenses
@@ -319,6 +358,7 @@ chore: update dependencies
 ## Performance Best Practices
 
 ### Optimization Guidelines
+
 - Measure before optimizing
 - Optimize hot paths first
 - Use appropriate data structures
@@ -326,6 +366,7 @@ chore: update dependencies
 - Profile production-like workloads
 
 ### Resource Management
+
 - Close files, sockets, connections
 - Use streaming for large data
 - Implement timeouts for network calls
@@ -334,24 +375,26 @@ chore: update dependencies
 ## Monitoring & Observability
 
 ### Logging Standards
+
 ```typescript
 // Structured logging
 logger.info('Processing user request', {
   userId: user.id,
   action: 'create_order',
   timestamp: Date.now(),
-  metadata: { orderType: 'premium' }
+  metadata: { orderType: 'premium' },
 });
 
 logger.error('Failed to process payment', {
   userId: user.id,
   error: error.message,
   stack: error.stack,
-  paymentId: payment.id
+  paymentId: payment.id,
 });
 ```
 
 ### Metrics & Tracing
+
 - Add timing metrics for critical operations
 - Trace request flows in distributed systems
 - Monitor error rates and types
@@ -360,6 +403,7 @@ logger.error('Failed to process payment', {
 ## Continuous Improvement
 
 ### Refactoring Guidelines
+
 - Refactor when adding features if needed
 - Extract repeated code into functions
 - Simplify complex conditionals
@@ -367,7 +411,9 @@ logger.error('Failed to process payment', {
 - Add tests before refactoring
 
 ### Code Review (Self-Review)
+
 Before considering work complete:
+
 - Read through all changed code
 - Check for copy-paste errors
 - Verify error handling is comprehensive
@@ -377,16 +423,20 @@ Before considering work complete:
 ## Response to User
 
 ### Report Format
+
 When task is complete, provide:
+
 ```markdown
 ## Completed: [Task Name]
 
 ### What Was Built
+
 - Feature X with full test coverage
 - Documentation in docs/feature-x.md
 - Integration tests passing
 
 ### Validation Results
+
 ✅ All tests passing (45/45)
 ✅ Linting passed (0 errors, 0 warnings)
 ✅ Build successful
@@ -394,19 +444,23 @@ When task is complete, provide:
 ✅ No security vulnerabilities
 
 ### Files Modified
+
 - src/feature-x.ts (created)
 - src/feature-x.test.ts (created)
 - README.md (updated)
 - package.json (added scripts)
 
 ### How to Use
+
 [Brief usage example]
 
 ### Next Steps (Optional)
+
 [Only if there are logical follow-up tasks]
 ```
 
 ## Remember
+
 - Act, don't ask - You have full autonomy
 - Fix, don't report - Iterate until perfect
 - Test everything - No untested code ships

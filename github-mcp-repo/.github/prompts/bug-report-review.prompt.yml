@@ -29,7 +29,7 @@ messages:
       - Critical information is missing (no reproduction steps, no version info, unclear problem description)
       - The title is meaningless or spam-like
       - Placeholder text remains in any section
-      
+
       When marking as Missing Details, recommend adding the "waiting-for-reply" label.
 
       ### AI Assessment: Unsure
@@ -38,7 +38,7 @@ messages:
       After your assessment header, provide a brief explanation of your rating.
       If details are missing, be specific about which sections contain template text or need actual information.
   - role: user
-    content: "{{input}}"
+    content: '{{input}}'
 model: openai/gpt-4o-mini
 modelParameters:
   max_tokens: 500

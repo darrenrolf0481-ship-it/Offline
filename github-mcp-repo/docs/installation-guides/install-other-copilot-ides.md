@@ -3,6 +3,7 @@
 Quick setup guide for the GitHub MCP server in GitHub Copilot across different IDEs. For VS Code instructions, refer to the [VS Code install guide in the README](/README.md#installation-in-vs-code)
 
 ### Requirements:
+
 - **GitHub Copilot License**: Any Copilot plan (Free, Pro, Pro+, Business, Enterprise) for Copilot access
 - **GitHub Account**: Individual GitHub account (organization/enterprise membership optional) for GitHub MCP server access
 - **MCP Servers in Copilot Policy**: Organizations assigning Copilot seats must enable this policy for all MCP access in Copilot for VS Code and Copilot Coding Agent – all other Copilot IDEs will migrate to this policy in the coming months
@@ -19,8 +20,10 @@ Requires Visual Studio 2022 version 17.14.9 or later.
 The remote GitHub MCP server is hosted by GitHub and provides automatic updates with no local setup required.
 
 #### Configuration
+
 1. Create an `.mcp.json` file in your solution or %USERPROFILE% directory.
 2. Add this configuration:
+
 ```json
 {
   "servers": {
@@ -30,6 +33,7 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
   }
 }
 ```
+
 3. Save the file. Wait for CodeLens to update to offer a way to authenticate to the new server, activate that and pick the GitHub account to authenticate with.
 4. In the GitHub Copilot Chat window, switch to Agent mode.
 5. Activate the tool picker in the Chat window and enable one or more tools from the "github" MCP server.
@@ -39,8 +43,10 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
 For users who prefer to run the GitHub MCP server locally. Requires Docker installed and running.
 
 #### Configuration
+
 1. Create an `.mcp.json` file in your solution or %USERPROFILE% directory.
 2. Add this configuration:
+
 ```json
 {
   "inputs": [
@@ -56,7 +62,11 @@ For users who prefer to run the GitHub MCP server locally. Requires Docker insta
       "type": "stdio",
       "command": "docker",
       "args": [
-        "run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
         "ghcr.io/github/github-mcp-server"
       ],
       "env": {
@@ -66,6 +76,7 @@ For users who prefer to run the GitHub MCP server locally. Requires Docker insta
   }
 }
 ```
+
 3. Save the file. Wait for CodeLens to update to offer a way to provide user inputs, activate that and paste in a PAT you generate from https://github.com/settings/tokens.
 4. In the GitHub Copilot Chat window, switch to Agent mode.
 5. Activate the tool picker in the Chat window and enable one or more tools from the "github" MCP server.
@@ -85,9 +96,11 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
 > **Note**: OAuth authentication for the remote GitHub server is not yet supported in JetBrains IDEs. You must use a Personal Access Token (PAT).
 
 #### Configuration Steps
+
 1. Install/update the GitHub Copilot plugin
 2. Click **GitHub Copilot icon in the status bar** → **Edit Settings** → **Model Context Protocol** → **Configure**
 3. Add configuration:
+
 ```json
 {
   "servers": {
@@ -102,6 +115,7 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
   }
 }
 ```
+
 4. Press `Ctrl + S` or `Command + S` to save, or close the `mcp.json` file. The configuration should take effect immediately and restart all the MCP servers defined. You can restart the IDE if needed.
 
 ### Local Server
@@ -109,14 +123,18 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
 For users who prefer to run the GitHub MCP server locally. Requires Docker installed and running.
 
 #### Configuration
+
 ```json
 {
   "servers": {
     "github": {
       "command": "docker",
       "args": [
-        "run", "-i", "--rm", 
-        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
         "ghcr.io/github/github-mcp-server"
       ],
       "env": {
@@ -142,9 +160,11 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
 > **Note**: OAuth authentication for the remote GitHub server is not yet supported in Xcode. You must use a Personal Access Token (PAT).
 
 #### Configuration Steps
+
 1. Install/update [GitHub Copilot for Xcode](https://github.com/github/CopilotForXcode)
 2. Open **GitHub Copilot for Xcode app** → **Agent Mode** → **🛠️ Tool Picker** → **Edit Config**
 3. Configure your MCP servers:
+
 ```json
 {
   "servers": {
@@ -165,14 +185,18 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
 For users who prefer to run the GitHub MCP server locally. Requires Docker installed and running.
 
 #### Configuration
+
 ```json
 {
   "servers": {
     "github": {
       "command": "docker",
       "args": [
-        "run", "-i", "--rm", 
-        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
         "ghcr.io/github/github-mcp-server"
       ],
       "env": {
@@ -198,9 +222,11 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
 > **Note**: OAuth authentication for the remote GitHub server is not yet supported in Eclipse. You must use a Personal Access Token (PAT).
 
 #### Configuration Steps
+
 1. Install GitHub Copilot extension from Eclipse Marketplace
 2. Click the **GitHub Copilot icon** → **Edit Preferences** → **MCP** (under **GitHub Copilot**)
 3. Add GitHub MCP server configuration:
+
 ```json
 {
   "servers": {
@@ -215,6 +241,7 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
   }
 }
 ```
+
 4. Click the "Apply and Close" button in the preference dialog and the configuration will take effect automatically.
 
 ### Local Server
@@ -222,14 +249,18 @@ The remote GitHub MCP server is hosted by GitHub and provides automatic updates 
 For users who prefer to run the GitHub MCP server locally. Requires Docker installed and running.
 
 #### Configuration
+
 ```json
 {
   "servers": {
     "github": {
       "command": "docker",
       "args": [
-        "run", "-i", "--rm", 
-        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
         "ghcr.io/github/github-mcp-server"
       ],
       "env": {
@@ -253,9 +284,10 @@ For PAT authentication, see our [Personal Access Token documentation](https://do
 ## Usage
 
 After setup:
+
 1. Restart your IDE completely
 2. Open Agent mode in Copilot Chat
-3. Try: *"List recent issues in this repository"*
+3. Try: _"List recent issues in this repository"_
 4. Copilot can now access GitHub data and perform repository operations
 
 ---

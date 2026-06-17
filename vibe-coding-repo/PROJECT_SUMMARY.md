@@ -15,24 +15,28 @@ A **comprehensive, production-ready MCP (Model Context Protocol) server** that p
 ## Key Features
 
 ### 🛡️ Security First
+
 - Path validation prevents directory traversal attacks
 - No automatic file deletion (user must confirm)
 - Sandboxed command execution
 - Workspace-scoped operations
 
 ### 🚀 Comprehensive Toolset
+
 - **40+ tools** across 7 categories
 - Auto-detects test frameworks (Jest, pytest, Mocha, Vitest)
 - Handles both Node.js and Python environments
 - Cross-platform support (Windows, macOS, Linux)
 
 ### 🔌 Auto-Discovery
+
 - JSON Schema validation for all tools
 - Comprehensive tool descriptions
 - Standardized error handling
 - Works with any MCP-compatible client
 
 ### 🎯 MCP Client Support
+
 - ✅ Claude Desktop
 - ✅ Cursor
 - ✅ Windsurf
@@ -83,6 +87,7 @@ mcp-vibe-coding-tools/
 If you see errors like `v3Schema.safeParseAsync is not a function`, it means there's a version mismatch.
 
 **To fix:**
+
 ```bash
 npm list @modelcontextprotocol/sdk  # Check installed version
 npm install @modelcontextprotocol/sdk@latest  # Update to latest
@@ -118,6 +123,7 @@ npm run build  # Rebuild the project
 ## Real-World Use Cases
 
 ### 1. Full Development Workflow
+
 ```
 AI: I'll help you set up a new feature:
 1. Create a new git branch
@@ -128,6 +134,7 @@ AI: I'll help you set up a new feature:
 ```
 
 ### 2. Code Analysis & Refactoring
+
 ```
 AI: I'll analyze your codebase:
 1. Search for all TypeScript files
@@ -138,6 +145,7 @@ AI: I'll analyze your codebase:
 ```
 
 ### 3. Web Scraping & Data Processing
+
 ```
 AI: I'll gather that data:
 1. Fetch the webpage
@@ -148,6 +156,7 @@ AI: I'll gather that data:
 ```
 
 ### 4. Project Maintenance
+
 ```
 AI: I'll update your project:
 1. Check for outdated npm packages
@@ -160,6 +169,7 @@ AI: I'll update your project:
 ## Research-Based Design
 
 The server was designed based on research of:
+
 - ✅ Official MCP documentation and examples
 - ✅ 500+ existing MCP servers in the ecosystem
 - ✅ Best practices from reference implementations
@@ -179,6 +189,7 @@ The server was designed based on research of:
 ## Next Steps for Enhancement
 
 Potential additions (not implemented yet):
+
 - Docker container management
 - Database operations (PostgreSQL, MySQL, MongoDB)
 - Cloud provider integrations (AWS, GCP, Azure)
@@ -216,6 +227,7 @@ The modular architecture makes it easy to add new tools:
 ## Final Notes
 
 This MCP server successfully "unchains" AI coding assistants by giving them:
+
 - ✅ Safe filesystem access
 - ✅ Command execution capabilities
 - ✅ Full git workflow automation

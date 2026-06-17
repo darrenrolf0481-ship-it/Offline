@@ -315,21 +315,24 @@ eventDispatcher.register({
 });
 
 // Card action callback handler
-const cardActionHandler = new lark.CardActionHandler({
-  encryptKey: process.env.FEISHU_ENCRYPT_KEY || '',
-  verificationToken: process.env.FEISHU_VERIFICATION_TOKEN || '',
-}, async (data) => {
-  const action = data.action.value;
+const cardActionHandler = new lark.CardActionHandler(
+  {
+    encryptKey: process.env.FEISHU_ENCRYPT_KEY || '',
+    verificationToken: process.env.FEISHU_VERIFICATION_TOKEN || '',
+  },
+  async (data) => {
+    const action = data.action.value;
 
-  if (action.action === 'approve') {
-    await processApproval(action.instance_id, true);
-    // Return the updated card
-    return {
-      toast: { type: 'success', content: 'Approval granted' },
-    };
+    if (action.action === 'approve') {
+      await processApproval(action.instance_id, true);
+      // Return the updated card
+      return {
+        toast: { type: 'success', content: 'Approval granted' },
+      };
+    }
+    return {};
   }
-  return {};
-});
+);
 
 app.use('/webhook/event', lark.adaptExpress(eventDispatcher));
 app.use('/webhook/card', lark.adaptExpress(cardActionHandler));
@@ -422,7 +425,7 @@ async function syncOrdersToBitable(orders: any[]) {
       'Order ID': order.orderId,
       'Customer Name': order.customerName,
       'Order Amount': order.amount,
-      'Status': order.status,
+      Status: order.status,
       'Created At': order.createdAt,
     },
   }));
@@ -493,17 +496,15 @@ const router = Router();
 
 // Step 1: Redirect to Feishu authorization page
 router.get('/login/feishu', (req, res) => {
-  const redirectUri = encodeURIComponent(
-    `${process.env.BASE_URL}/callback/feishu`
-  );
+  const redirectUri = encodeURIComponent(`${process.env.BASE_URL}/callback/feishu`);
   const state = generateRandomState();
   req.session!.oauthState = state;
 
   res.redirect(
     `https://open.feishu.cn/open-apis/authen/v1/authorize` +
-    `?app_id=${process.env.FEISHU_APP_ID}` +
-    `&redirect_uri=${redirectUri}` +
-    `&state=${state}`
+      `?app_id=${process.env.FEISHU_APP_ID}` +
+      `&redirect_uri=${redirectUri}` +
+      `&state=${state}`
   );
 });
 

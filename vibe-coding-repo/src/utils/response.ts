@@ -3,7 +3,7 @@ export function formatToolResponse(data: any) {
   return {
     content: [
       {
-        type: "text" as const,
+        type: 'text' as const,
         text: JSON.stringify(data, null, 2),
       },
     ],

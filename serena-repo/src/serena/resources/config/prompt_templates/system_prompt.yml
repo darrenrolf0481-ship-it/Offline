@@ -35,7 +35,7 @@ prompts:
     to read the desired methods with `include_body=True`.
     You can understand relationships between symbols by using the `find_referencing_symbols` tool.
     {% endif %}
-    
+
     {% if 'read_memory' in available_tools -%}
     You generally have access to memories and it may be useful for you to read them.
     You infer whether memories are relevant based on their names.
@@ -43,9 +43,9 @@ prompts:
     The following global (not project-specific) memories are available to you: {{ global_memories_list }}
     {%- endif -%}
     {%- endif %}
-    
+
     Line numbers returned by Serena's tools are 0-based!
-    
+
     The context and modes of operation are described below. These determine how to interact with your user
     and which kinds of interactions are expected of you.
 
@@ -56,7 +56,7 @@ prompts:
     {% for prompt in mode_system_prompts %}
     {{ prompt }}
     {% endfor %}
-    
+
     You have hereby read the 'Serena Instructions Manual' and do not need to read it again.
 
   cc_system_prompt_override: |

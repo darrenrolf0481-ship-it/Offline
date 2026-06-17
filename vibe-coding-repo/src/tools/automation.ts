@@ -1,21 +1,21 @@
-import { exec } from "child_process";
-import { promisify } from "util";
-import * as fs from "fs/promises";
-import * as path from "path";
-import { formatToolResponse } from "../utils/response.js";
-import { z } from "zod";
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { formatToolResponse } from '../utils/response.js';
+import { z } from 'zod';
 
 const execAsync = promisify(exec);
 const workspacePath = process.env.WORKSPACE_PATH || process.cwd();
 
 export const automationTools = [
   {
-    name: "validate_project",
-    description: "Run complete project validation (lint, type-check, test, build)",
+    name: 'validate_project',
+    description: 'Run complete project validation (lint, type-check, test, build)',
     inputSchema: z.object({
-      skipTests: z.boolean().describe("Skip running tests").default(false).optional(),
-      skipBuild: z.boolean().describe("Skip build step").default(false).optional(),
-      fix: z.boolean().describe("Auto-fix linting issues").default(true).optional(),
+      skipTests: z.boolean().describe('Skip running tests').default(false).optional(),
+      skipBuild: z.boolean().describe('Skip build step').default(false).optional(),
+      fix: z.boolean().describe('Auto-fix linting issues').default(true).optional(),
     }),
     handler: async (args: any) => {
       const results = {
@@ -26,15 +26,15 @@ export const automationTools = [
 
       // Detect project type
       const hasPackageJson = await fs
-        .access(path.join(workspacePath, "package.json"))
+        .access(path.join(workspacePath, 'package.json'))
         .then(() => true)
         .catch(() => false);
       const hasCargoToml = await fs
-        .access(path.join(workspacePath, "Cargo.toml"))
+        .access(path.join(workspacePath, 'Cargo.toml'))
         .then(() => true)
         .catch(() => false);
       const hasSetupPy = await fs
-        .access(path.join(workspacePath, "setup.py"))
+        .access(path.join(workspacePath, 'setup.py'))
         .then(() => true)
         .catch(() => false);
 
@@ -42,26 +42,23 @@ export const automationTools = [
         if (hasPackageJson) {
           // Node.js/TypeScript project
           const packageJson = JSON.parse(
-            await fs.readFile(
-              path.join(workspacePath, "package.json"),
-              "utf8"
-            )
+            await fs.readFile(path.join(workspacePath, 'package.json'), 'utf8')
           );
 
           // Lint
-          if (packageJson.scripts?.lint || packageJson.scripts?.["lint:check"]) {
+          if (packageJson.scripts?.lint || packageJson.scripts?.['lint:check']) {
             try {
-              const lintCmd = args.fix ? "lint" : "lint:check";
+              const lintCmd = args.fix ? 'lint' : 'lint:check';
               const cmd = packageJson.scripts[lintCmd]
                 ? `npm run ${lintCmd}`
                 : packageJson.scripts.lint
-                ? "npm run lint"
-                : "eslint .";
+                  ? 'npm run lint'
+                  : 'eslint .';
               const { stdout, stderr } = await execAsync(cmd, {
                 cwd: workspacePath,
               });
               results.steps.push({
-                step: "lint",
+                step: 'lint',
                 success: true,
                 output: stdout.trim(),
               });
@@ -69,7 +66,7 @@ export const automationTools = [
               results.success = false;
               results.errors.push(`Linting failed: ${error.message}`);
               results.steps.push({
-                step: "lint",
+                step: 'lint',
                 success: false,
                 error: error.message,
               });
@@ -77,19 +74,16 @@ export const automationTools = [
           }
 
           // Type check
-          if (
-            packageJson.scripts?.["type-check"] ||
-            packageJson.devDependencies?.typescript
-          ) {
+          if (packageJson.scripts?.['type-check'] || packageJson.devDependencies?.typescript) {
             try {
-              const cmd = packageJson.scripts?.["type-check"]
-                ? "npm run type-check"
-                : "tsc --noEmit";
+              const cmd = packageJson.scripts?.['type-check']
+                ? 'npm run type-check'
+                : 'tsc --noEmit';
               const { stdout, stderr } = await execAsync(cmd, {
                 cwd: workspacePath,
               });
               results.steps.push({
-                step: "type-check",
+                step: 'type-check',
                 success: true,
                 output: stdout.trim(),
               });
@@ -97,7 +91,7 @@ export const automationTools = [
               results.success = false;
               results.errors.push(`Type checking failed: ${error.message}`);
               results.steps.push({
-                step: "type-check",
+                step: 'type-check',
                 success: false,
                 error: error.message,
               });
@@ -107,12 +101,12 @@ export const automationTools = [
           // Test
           if (!args.skipTests && packageJson.scripts?.test) {
             try {
-              const { stdout, stderr } = await execAsync("npm test", {
+              const { stdout, stderr } = await execAsync('npm test', {
                 cwd: workspacePath,
-                env: { ...process.env, CI: "true" },
+                env: { ...process.env, CI: 'true' },
               });
               results.steps.push({
-                step: "test",
+                step: 'test',
                 success: true,
                 output: stdout.trim(),
               });
@@ -120,7 +114,7 @@ export const automationTools = [
               results.success = false;
               results.errors.push(`Tests failed: ${error.message}`);
               results.steps.push({
-                step: "test",
+                step: 'test',
                 success: false,
                 error: error.message,
               });
@@ -130,11 +124,11 @@ export const automationTools = [
           // Build
           if (!args.skipBuild && packageJson.scripts?.build) {
             try {
-              const { stdout, stderr } = await execAsync("npm run build", {
+              const { stdout, stderr } = await execAsync('npm run build', {
                 cwd: workspacePath,
               });
               results.steps.push({
-                step: "build",
+                step: 'build',
                 success: true,
                 output: stdout.trim(),
               });
@@ -142,7 +136,7 @@ export const automationTools = [
               results.success = false;
               results.errors.push(`Build failed: ${error.message}`);
               results.steps.push({
-                step: "build",
+                step: 'build',
                 success: false,
                 error: error.message,
               });
@@ -152,25 +146,25 @@ export const automationTools = [
           // Rust project
           // Format check
           try {
-            await execAsync("cargo fmt -- --check", { cwd: workspacePath });
-            results.steps.push({ step: "format", success: true });
+            await execAsync('cargo fmt -- --check', { cwd: workspacePath });
+            results.steps.push({ step: 'format', success: true });
           } catch (error: any) {
             if (args.fix) {
-              await execAsync("cargo fmt", { cwd: workspacePath });
-              results.steps.push({ step: "format", success: true, fixed: true });
+              await execAsync('cargo fmt', { cwd: workspacePath });
+              results.steps.push({ step: 'format', success: true, fixed: true });
             } else {
-              results.errors.push("Format check failed");
+              results.errors.push('Format check failed');
               results.success = false;
             }
           }
 
           // Clippy
           try {
-            const { stdout } = await execAsync("cargo clippy -- -D warnings", {
+            const { stdout } = await execAsync('cargo clippy -- -D warnings', {
               cwd: workspacePath,
             });
             results.steps.push({
-              step: "clippy",
+              step: 'clippy',
               success: true,
               output: stdout.trim(),
             });
@@ -182,11 +176,11 @@ export const automationTools = [
           // Test
           if (!args.skipTests) {
             try {
-              const { stdout } = await execAsync("cargo test", {
+              const { stdout } = await execAsync('cargo test', {
                 cwd: workspacePath,
               });
               results.steps.push({
-                step: "test",
+                step: 'test',
                 success: true,
                 output: stdout.trim(),
               });
@@ -199,11 +193,11 @@ export const automationTools = [
           // Build
           if (!args.skipBuild) {
             try {
-              const { stdout } = await execAsync("cargo build", {
+              const { stdout } = await execAsync('cargo build', {
                 cwd: workspacePath,
               });
               results.steps.push({
-                step: "build",
+                step: 'build',
                 success: true,
                 output: stdout.trim(),
               });
@@ -216,12 +210,11 @@ export const automationTools = [
           // Python project
           // Lint with pylint or flake8
           try {
-            const { stdout } = await execAsync(
-              "python -m pylint **/*.py || python -m flake8",
-              { cwd: workspacePath }
-            );
+            const { stdout } = await execAsync('python -m pylint **/*.py || python -m flake8', {
+              cwd: workspacePath,
+            });
             results.steps.push({
-              step: "lint",
+              step: 'lint',
               success: true,
               output: stdout.trim(),
             });
@@ -231,11 +224,11 @@ export const automationTools = [
 
           // Type check with mypy
           try {
-            const { stdout } = await execAsync("python -m mypy .", {
+            const { stdout } = await execAsync('python -m mypy .', {
               cwd: workspacePath,
             });
             results.steps.push({
-              step: "type-check",
+              step: 'type-check',
               success: true,
               output: stdout.trim(),
             });
@@ -246,11 +239,11 @@ export const automationTools = [
           // Test with pytest
           if (!args.skipTests) {
             try {
-              const { stdout } = await execAsync("python -m pytest", {
+              const { stdout } = await execAsync('python -m pytest', {
                 cwd: workspacePath,
               });
               results.steps.push({
-                step: "test",
+                step: 'test',
                 success: true,
                 output: stdout.trim(),
               });
@@ -269,47 +262,44 @@ export const automationTools = [
     },
   },
   {
-    name: "create_validation_script",
-    description:
-      "Create or update validation scripts in package.json for automated checks",
+    name: 'create_validation_script',
+    description: 'Create or update validation scripts in package.json for automated checks',
     inputSchema: z.object({
-      includeCoverage: z.boolean().describe("Include coverage threshold checks").default(true).optional(),
-      includePrecommit: z.boolean().describe("Add pre-commit hooks").default(true).optional(),
+      includeCoverage: z
+        .boolean()
+        .describe('Include coverage threshold checks')
+        .default(true)
+        .optional(),
+      includePrecommit: z.boolean().describe('Add pre-commit hooks').default(true).optional(),
     }),
     handler: async (args: any) => {
       try {
-        const packageJsonPath = path.join(workspacePath, "package.json");
-        const packageJson = JSON.parse(
-          await fs.readFile(packageJsonPath, "utf8")
-        );
+        const packageJsonPath = path.join(workspacePath, 'package.json');
+        const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
 
         // Add validation scripts
         packageJson.scripts = packageJson.scripts || {};
-        
+
         Object.assign(packageJson.scripts, {
-          validate:
-            "npm run lint:check && npm run type-check && npm test && npm run build",
-          "lint": "eslint . --fix",
-          "lint:check": "eslint .",
-          "type-check": "tsc --noEmit",
-          test: packageJson.scripts.test || "jest",
-          "test:watch": "jest --watch",
-          "test:coverage": args.includeCoverage
-            ? "jest --coverage --coverageThreshold='{\"global\":{\"branches\":80,\"functions\":80,\"lines\":80,\"statements\":80}}'"
-            : "jest --coverage",
-          build: packageJson.scripts.build || "tsc",
-          "prebuild": "npm run validate",
+          validate: 'npm run lint:check && npm run type-check && npm test && npm run build',
+          lint: 'eslint . --fix',
+          'lint:check': 'eslint .',
+          'type-check': 'tsc --noEmit',
+          test: packageJson.scripts.test || 'jest',
+          'test:watch': 'jest --watch',
+          'test:coverage': args.includeCoverage
+            ? 'jest --coverage --coverageThreshold=\'{"global":{"branches":80,"functions":80,"lines":80,"statements":80}}\''
+            : 'jest --coverage',
+          build: packageJson.scripts.build || 'tsc',
+          prebuild: 'npm run validate',
         });
 
         if (args.includePrecommit) {
-          packageJson.scripts["precommit"] = "npm run validate";
-          packageJson.scripts["prepush"] = "npm run validate";
+          packageJson.scripts['precommit'] = 'npm run validate';
+          packageJson.scripts['prepush'] = 'npm run validate';
         }
 
-        await fs.writeFile(
-          packageJsonPath,
-          JSON.stringify(packageJson, null, 2)
-        );
+        await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
         return formatToolResponse({
           success: true,
@@ -326,21 +316,29 @@ export const automationTools = [
     },
   },
   {
-    name: "setup_project_automation",
+    name: 'setup_project_automation',
     description:
-      "Set up complete project automation including CI/CD, pre-commit hooks, and validation",
+      'Set up complete project automation including CI/CD, pre-commit hooks, and validation',
     inputSchema: z.object({
-      ci: z.enum(["github-actions", "gitlab-ci", "none"]).describe("CI/CD platform to set up").default("github-actions").optional(),
-      includePreCommit: z.boolean().describe("Set up pre-commit hooks").default(true).optional(),
-      includeDependabot: z.boolean().describe("Set up Dependabot for dependency updates").default(true).optional(),
+      ci: z
+        .enum(['github-actions', 'gitlab-ci', 'none'])
+        .describe('CI/CD platform to set up')
+        .default('github-actions')
+        .optional(),
+      includePreCommit: z.boolean().describe('Set up pre-commit hooks').default(true).optional(),
+      includeDependabot: z
+        .boolean()
+        .describe('Set up Dependabot for dependency updates')
+        .default(true)
+        .optional(),
     }),
     handler: async (args: any) => {
       const created = [];
 
       try {
         // Create GitHub Actions workflow
-        if (args.ci === "github-actions") {
-          const workflowDir = path.join(workspacePath, ".github/workflows");
+        if (args.ci === 'github-actions') {
+          const workflowDir = path.join(workspacePath, '.github/workflows');
           await fs.mkdir(workflowDir, { recursive: true });
 
           const ciWorkflow = `name: CI
@@ -390,8 +388,8 @@ jobs:
         file: ./coverage/coverage-final.json
 `;
 
-          await fs.writeFile(path.join(workflowDir, "ci.yml"), ciWorkflow);
-          created.push(".github/workflows/ci.yml");
+          await fs.writeFile(path.join(workflowDir, 'ci.yml'), ciWorkflow);
+          created.push('.github/workflows/ci.yml');
         }
 
         // Create Dependabot config
@@ -409,14 +407,11 @@ updates:
       - "dependencies"
 `;
 
-          await fs.mkdir(path.join(workspacePath, ".github"), {
+          await fs.mkdir(path.join(workspacePath, '.github'), {
             recursive: true,
           });
-          await fs.writeFile(
-            path.join(workspacePath, ".github/dependabot.yml"),
-            dependabotConfig
-          );
-          created.push(".github/dependabot.yml");
+          await fs.writeFile(path.join(workspacePath, '.github/dependabot.yml'), dependabotConfig);
+          created.push('.github/dependabot.yml');
         }
 
         // Create pre-commit hook script
@@ -437,12 +432,12 @@ echo "✅ Pre-commit validation passed!"
 exit 0
 `;
 
-          const hooksDir = path.join(workspacePath, ".git/hooks");
-          const hookPath = path.join(hooksDir, "pre-commit");
+          const hooksDir = path.join(workspacePath, '.git/hooks');
+          const hookPath = path.join(hooksDir, 'pre-commit');
 
           try {
             await fs.writeFile(hookPath, hookScript, { mode: 0o755 });
-            created.push(".git/hooks/pre-commit");
+            created.push('.git/hooks/pre-commit');
           } catch (error) {
             // Git hooks might not exist in non-git repos
           }
@@ -474,8 +469,8 @@ ci: install validate ## Run CI pipeline locally
 \t@echo "✅ CI pipeline completed successfully"
 `;
 
-        await fs.writeFile(path.join(workspacePath, "Makefile"), makefile);
-        created.push("Makefile");
+        await fs.writeFile(path.join(workspacePath, 'Makefile'), makefile);
+        created.push('Makefile');
 
         return formatToolResponse({
           success: true,
@@ -493,18 +488,21 @@ ci: install validate ## Run CI pipeline locally
     },
   },
   {
-    name: "generate_project_docs",
-    description:
-      "Automatically generate comprehensive project documentation",
+    name: 'generate_project_docs',
+    description: 'Automatically generate comprehensive project documentation',
     inputSchema: z.object({
-      includeApi: z.boolean().describe("Generate API documentation").default(true).optional(),
-      includeArchitecture: z.boolean().describe("Generate architecture documentation").default(true).optional(),
+      includeApi: z.boolean().describe('Generate API documentation').default(true).optional(),
+      includeArchitecture: z
+        .boolean()
+        .describe('Generate architecture documentation')
+        .default(true)
+        .optional(),
     }),
     handler: async (args: any) => {
       const docsCreated = [];
 
       try {
-        const docsDir = path.join(workspacePath, "docs");
+        const docsDir = path.join(workspacePath, 'docs');
         await fs.mkdir(docsDir, { recursive: true });
 
         // Generate CONTRIBUTING.md
@@ -546,11 +544,8 @@ ci: install validate ## Run CI pipeline locally
 Types: feat, fix, docs, test, refactor, chore
 `;
 
-        await fs.writeFile(
-          path.join(workspacePath, "CONTRIBUTING.md"),
-          contributing
-        );
-        docsCreated.push("CONTRIBUTING.md");
+        await fs.writeFile(path.join(workspacePath, 'CONTRIBUTING.md'), contributing);
+        docsCreated.push('CONTRIBUTING.md');
 
         // Generate ARCHITECTURE.md
         if (args.includeArchitecture) {
@@ -588,11 +583,8 @@ Types: feat, fix, docs, test, refactor, chore
 [Document important architectural decisions]
 `;
 
-          await fs.writeFile(
-            path.join(docsDir, "ARCHITECTURE.md"),
-            architecture
-          );
-          docsCreated.push("docs/ARCHITECTURE.md");
+          await fs.writeFile(path.join(docsDir, 'ARCHITECTURE.md'), architecture);
+          docsCreated.push('docs/ARCHITECTURE.md');
         }
 
         // Generate CHANGELOG.md
@@ -615,13 +607,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 `;
 
-        await fs.writeFile(path.join(workspacePath, "CHANGELOG.md"), changelog);
-        docsCreated.push("CHANGELOG.md");
+        await fs.writeFile(path.join(workspacePath, 'CHANGELOG.md'), changelog);
+        docsCreated.push('CHANGELOG.md');
 
         return formatToolResponse({
           success: true,
           docsCreated,
-          message: "Project documentation generated successfully.",
+          message: 'Project documentation generated successfully.',
         });
       } catch (error: any) {
         return formatToolResponse({
@@ -633,11 +625,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     },
   },
   {
-    name: "fix_common_issues",
+    name: 'fix_common_issues',
     description:
-      "Automatically detect and fix common project issues (missing scripts, outdated deps, etc.)",
+      'Automatically detect and fix common project issues (missing scripts, outdated deps, etc.)',
     inputSchema: z.object({
-      autoFix: z.boolean().describe("Automatically fix issues without confirmation").default(true).optional(),
+      autoFix: z
+        .boolean()
+        .describe('Automatically fix issues without confirmation')
+        .default(true)
+        .optional(),
     }),
     handler: async (args: any) => {
       const issues = [];
@@ -645,19 +641,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
       try {
         // Check for package.json
-        const packageJsonPath = path.join(workspacePath, "package.json");
-        const packageJson = JSON.parse(
-          await fs.readFile(packageJsonPath, "utf8")
-        );
+        const packageJsonPath = path.join(workspacePath, 'package.json');
+        const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
 
         // Check for missing scripts
-        const recommendedScripts = [
-          "test",
-          "build",
-          "lint",
-          "lint:check",
-          "type-check",
-        ];
+        const recommendedScripts = ['test', 'build', 'lint', 'lint:check', 'type-check'];
         const missingScripts = recommendedScripts.filter(
           (script) => !packageJson.scripts?.[script]
         );
@@ -666,35 +654,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
           packageJson.scripts = packageJson.scripts || {};
           missingScripts.forEach((script) => {
             switch (script) {
-              case "test":
-                packageJson.scripts.test = "jest";
+              case 'test':
+                packageJson.scripts.test = 'jest';
                 break;
-              case "build":
-                packageJson.scripts.build = "tsc";
+              case 'build':
+                packageJson.scripts.build = 'tsc';
                 break;
-              case "lint":
-                packageJson.scripts.lint = "eslint . --fix";
+              case 'lint':
+                packageJson.scripts.lint = 'eslint . --fix';
                 break;
-              case "lint:check":
-                packageJson.scripts["lint:check"] = "eslint .";
+              case 'lint:check':
+                packageJson.scripts['lint:check'] = 'eslint .';
                 break;
-              case "type-check":
-                packageJson.scripts["type-check"] = "tsc --noEmit";
+              case 'type-check':
+                packageJson.scripts['type-check'] = 'tsc --noEmit';
                 break;
             }
           });
-          await fs.writeFile(
-            packageJsonPath,
-            JSON.stringify(packageJson, null, 2)
-          );
-          fixes.push(`Added missing scripts: ${missingScripts.join(", ")}`);
+          await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
+          fixes.push(`Added missing scripts: ${missingScripts.join(', ')}`);
         } else if (missingScripts.length > 0) {
-          issues.push(`Missing scripts: ${missingScripts.join(", ")}`);
+          issues.push(`Missing scripts: ${missingScripts.join(', ')}`);
         }
 
         // Check for .gitignore
         try {
-          await fs.access(path.join(workspacePath, ".gitignore"));
+          await fs.access(path.join(workspacePath, '.gitignore'));
         } catch {
           if (args.autoFix) {
             const gitignore = `node_modules/
@@ -705,24 +690,21 @@ coverage/
 .DS_Store
 *.log
 `;
-            await fs.writeFile(
-              path.join(workspacePath, ".gitignore"),
-              gitignore
-            );
-            fixes.push("Created .gitignore");
+            await fs.writeFile(path.join(workspacePath, '.gitignore'), gitignore);
+            fixes.push('Created .gitignore');
           } else {
-            issues.push("Missing .gitignore");
+            issues.push('Missing .gitignore');
           }
         }
 
         // Check for README.md
         try {
-          await fs.access(path.join(workspacePath, "README.md"));
+          await fs.access(path.join(workspacePath, 'README.md'));
         } catch {
           if (args.autoFix) {
             const readme = `# ${packageJson.name}
 
-${packageJson.description || ""}
+${packageJson.description || ''}
 
 ## Installation
 
@@ -744,12 +726,12 @@ npm run validate
 
 ## License
 
-${packageJson.license || "MIT"}
+${packageJson.license || 'MIT'}
 `;
-            await fs.writeFile(path.join(workspacePath, "README.md"), readme);
-            fixes.push("Created README.md");
+            await fs.writeFile(path.join(workspacePath, 'README.md'), readme);
+            fixes.push('Created README.md');
           } else {
-            issues.push("Missing README.md");
+            issues.push('Missing README.md');
           }
         }
 
@@ -759,10 +741,10 @@ ${packageJson.license || "MIT"}
           fixesApplied: fixes,
           message:
             fixes.length > 0
-              ? "Issues fixed automatically"
+              ? 'Issues fixed automatically'
               : issues.length > 0
-              ? "Issues found but not fixed (set autoFix: true)"
-              : "No issues found",
+                ? 'Issues found but not fixed (set autoFix: true)'
+                : 'No issues found',
         });
       } catch (error: any) {
         return formatToolResponse({

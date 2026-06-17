@@ -5,6 +5,7 @@ A comprehensive Model Context Protocol (MCP) server that unchains AI coding assi
 ## 🚀 Features
 
 ### Filesystem Operations
+
 - **Read files** - Read file contents with encoding support
 - **Write files** - Create and update files (no deletion without user confirmation)
 - **List directories** - Browse directory structures
@@ -12,12 +13,14 @@ A comprehensive Model Context Protocol (MCP) server that unchains AI coding assi
 - **File info** - Get file metadata and stats
 
 ### CLI & Process Execution
+
 - **Execute commands** - Run shell commands safely
 - **Process management** - Monitor running processes
 - **Environment variables** - Access and set environment variables
 - **Working directory** - Change and manage current working directory
 
 ### Git Operations
+
 - **Status** - Check repository status
 - **Log** - View commit history
 - **Diff** - See changes in files
@@ -28,24 +31,28 @@ A comprehensive Model Context Protocol (MCP) server that unchains AI coding assi
 - **Stash** - Stash and apply changes
 
 ### Web Operations
+
 - **Fetch webpage** - Download web content
 - **Parse HTML** - Extract data from HTML
 - **Follow links** - Navigate web pages
 - **Download files** - Save web resources
 
 ### Node.js Project Tools
+
 - **Package management** - Install, update, remove packages
 - **Script execution** - Run npm scripts
 - **Dependency analysis** - Check for outdated packages
 - **Project initialization** - Create new projects
 
 ### Python Project Tools
+
 - **Virtual environments** - Create and manage venvs
 - **Package management** - Install packages with pip
 - **Requirements** - Generate and install from requirements.txt
 - **Script execution** - Run Python scripts
 
 ### Testing & Execution
+
 - **Run tests** - Execute test suites (Jest, pytest, etc.)
 - **Build projects** - Compile and build applications
 - **Start servers** - Launch development servers
@@ -105,8 +112,9 @@ For Claude, you may want to update `WORKSPACE_PATH` per project, or use a defaul
 ### For Other MCP Clients
 
 The server uses **stdio transport** (standard for MCP) - configure similarly in:
+
 - Cursor
-- Windsurf  
+- Windsurf
 - Cline
 - Continue
 - Any MCP-compatible client
@@ -116,26 +124,31 @@ Same pattern: `node /path/to/server/dist/index.js` with optional `WORKSPACE_PATH
 ## 🎯 Usage Examples
 
 ### Read a File
+
 ```
 Can you read the README.md file?
 ```
 
 ### Execute a Command
+
 ```
 Run npm test in the current directory
 ```
 
 ### Git Operations
+
 ```
 Show me the git status and recent commits
 ```
 
 ### Web Scraping
+
 ```
 Fetch the content from example.com and extract all the links
 ```
 
 ### Install Dependencies
+
 ```
 Install the axios package for this Node.js project
 ```
@@ -166,6 +179,7 @@ npm run inspector
 ## 📚 Architecture
 
 The server is built using:
+
 - **@modelcontextprotocol/sdk** - Official MCP SDK
 - **TypeScript** - Type-safe development
 - **Node.js** - Runtime environment

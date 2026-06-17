@@ -5,8 +5,8 @@
 > **Codex (GPT 5.4, high):** "As a coding agent, I would ask my owner to add Serena because it turns fragile text-and-line-number work into precise symbol-aware navigation and refactoring, which makes real code changes feel faster, safer, and far less blind."
 
 > **Codex (GPT 5.4, medium):** "As a coding agent, I’d absolutely ask my owner to add Serena because it makes me noticeably sharper and calmer on
-real code – especially symbol-aware navigation, cross-file refactors, and monorepo dependency jumps – while I still lean
-on built-ins for tiny text edits and non-code work." 
+> real code – especially symbol-aware navigation, cross-file refactors, and monorepo dependency jumps – while I still lean
+> on built-ins for tiny text edits and non-code work."
 
 These are not marketing quotes – they are the agents' own one-sentence verdicts after
 performing hands-on tasks, using both Serena's tools and their built-in
@@ -30,13 +30,12 @@ results, not just positive ones.
 
 The agent evaluates itself. This is deliberate: the agent is the actual user of the tools,
 so it can judge workflow improvements from direct experience rather than through proxy
-metrics. And because the prompt defines task *categories* rather than fixed tasks, anyone
+metrics. And because the prompt defines task _categories_ rather than fixed tasks, anyone
 can rerun the evaluation on their own project with their own agent.
-
 
 ## Serena in JetBrains Junie
 
-A particularly notable evaluation scenario is Serena in JetBrains' Junie plugin. The latter also has access 
+A particularly notable evaluation scenario is Serena in JetBrains' Junie plugin. The latter also has access
 to some of JetBrains' refactoring tools. At the time of writing, the only overlapping capability between Serena's tool
 and Junie's native tools is the renaming feature. Opus correctly noticed this during the evaluation and marked the
 renaming capability as equivalent. However, many symbolic and refactoring tools offered by Serena have no inbuilt equivalents,

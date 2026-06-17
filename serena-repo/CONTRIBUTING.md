@@ -5,9 +5,10 @@ Thank you for your interest in contributing to Serena!
 ## Scope of Contributions
 
 The following types of contributions can be submitted directly via pull requests:
-  * isolated additions which do not change the behaviour of Serena and only extend it along existing lines (e.g., adding support for a new language server)
-  * small bug fixes
-  * documentation improvements
+
+- isolated additions which do not change the behaviour of Serena and only extend it along existing lines (e.g., adding support for a new language server)
+- small bug fixes
+- documentation improvements
 
 For other changes, please open an issue first to discuss your ideas with the maintainers.
 
@@ -24,8 +25,8 @@ You can install a virtual environment with the required as follows
 
 1. Create a new virtual environment: `uv venv -p 3.13`
 2. Activate the environment:
-    * On Linux/Unix/macOS or Windows with Git Bash: `source .venv/bin/activate`
-    * On Windows outside of Git Bash: `.venv\Scripts\activate.bat` (in cmd/ps) or `source .venv/Scripts/activate` (in git-bash) 
+   - On Linux/Unix/macOS or Windows with Git Bash: `source .venv/bin/activate`
+   - On Windows outside of Git Bash: `.venv\Scripts\activate.bat` (in cmd/ps) or `source .venv/Scripts/activate` (in git-bash)
 3. Install the required packages with all extras: `uv sync --extra dev`
 
 ## Local Installation as Tool

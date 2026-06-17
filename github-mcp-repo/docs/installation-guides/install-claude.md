@@ -3,6 +3,7 @@
 ## Claude Code CLI
 
 ### Prerequisites
+
 - Claude Code CLI installed
 - [GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new)
 - For local setup: [Docker](https://www.docker.com/) installed and running
@@ -15,11 +16,13 @@
 For security, avoid hardcoding your token. One common approach:
 
 1. Store your token in `.env` file
+
 ```
 GITHUB_PAT=your_token_here
 ```
 
 2. Add to .gitignore
+
 ```bash
 echo -e ".env\n.mcp.json" >> .gitignore
 ```
@@ -33,16 +36,19 @@ echo -e ".env\n.mcp.json" >> .gitignore
 > **Windows / CLI note**: `claude mcp add-json` may return `Invalid input` when adding an HTTP server. If that happens, use the legacy `claude mcp add --transport http ...` command format below.
 
 1. Run the following command in the terminal (not in Claude Code CLI):
+
 ```bash
 claude mcp add-json github '{"type":"http","url":"https://api.githubcopilot.com/mcp","headers":{"Authorization":"Bearer YOUR_GITHUB_PAT"}}'
 ```
 
 With an environment variable:
+
 ```bash
 claude mcp add-json github '{"type":"http","url":"https://api.githubcopilot.com/mcp","headers":{"Authorization":"Bearer '"$(grep GITHUB_PAT .env | cut -d '=' -f2)"'"}}'
 ```
 
 > **About the `--scope` flag** (optional): Use this to specify where the configuration is stored:
+>
 > - `local` (default): Available only to you in the current project (was called `project` in older versions)
 > - `project`: Shared with everyone in the project via `.mcp.json` file
 > - `user`: Available to you across all projects (was called `global` in older versions)
@@ -55,15 +61,19 @@ claude mcp add-json github '{"type":"http","url":"https://api.githubcopilot.com/
 ### Local Server Setup (Docker required)
 
 ### With Docker
+
 1. Run the following command in the terminal (not in Claude Code CLI):
+
 ```bash
 claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=YOUR_GITHUB_PAT -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server
 ```
 
 With an environment variable:
+
 ```bash
 claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=$(grep GITHUB_PAT .env | cut -d '=' -f2) -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server
 ```
+
 2. Restart Claude Code
 3. Run `claude mcp list` to see if the GitHub server is configured
 
@@ -72,13 +82,16 @@ claude mcp add github -e GITHUB_PERSONAL_ACCESS_TOKEN=$(grep GITHUB_PAT .env | c
 1. Download [release binary](https://github.com/github/github-mcp-server/releases)
 2. Add to your `PATH`
 3. Run:
+
 ```bash
 claude mcp add-json github '{"command": "github-mcp-server", "args": ["stdio"], "env": {"GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_PAT"}}'
 ```
+
 2. Restart Claude Code
 3. Run `claude mcp list` to see if the GitHub server is configured
 
 ### Verification
+
 ```bash
 claude mcp list
 claude mcp get github
@@ -93,6 +106,7 @@ claude mcp add --transport http github https://api.githubcopilot.com/mcp -H "Aut
 ```
 
 With an environment variable:
+
 ```bash
 claude mcp add --transport http github https://api.githubcopilot.com/mcp -H "Authorization: Bearer $(grep GITHUB_PAT .env | cut -d '=' -f2)"
 ```
@@ -113,6 +127,7 @@ claude mcp add github --transport http https://api.githubcopilot.com/mcp/ -H "Au
 > ⚠️ **Note**: Some users have reported compatibility issues with Claude Desktop and Docker-based MCP servers. We're investigating. If you experience issues, try using another MCP host, while we look into it!
 
 ### Prerequisites
+
 - Claude Desktop installed (latest version)
 - [GitHub Personal Access Token](https://github.com/settings/personal-access-tokens/new)
 - [Docker](https://www.docker.com/) installed and running
@@ -120,6 +135,7 @@ claude mcp add github --transport http https://api.githubcopilot.com/mcp/ -H "Au
 > **Note**: Claude Desktop supports MCP servers that are both local (stdio) and remote ("connectors"). Remote servers can generally be added via Settings → Connectors → "Add custom connector". However, the GitHub remote MCP server requires OAuth authentication through a registered GitHub App (or OAuth App), which is not currently supported. Use the local Docker setup instead.
 
 ### Configuration File Location
+
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 - **Linux**: `~/.config/Claude/claude_desktop_config.json`
@@ -150,6 +166,7 @@ Add this codeblock to your `claude_desktop_config.json`:
 ```
 
 ### Manual Setup Steps
+
 1. Open Claude Desktop
 2. Go to Settings → Developer → Edit Config
 3. Paste the code block above in your configuration file
@@ -226,6 +243,7 @@ Or open the file in a text editor and add the `mcpServers` block manually:
 ```
 
 ### Setup Steps
+
 1. Create or open `~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/.claude.json`
 2. Add the configuration block above
 3. Replace `YOUR_GITHUB_PAT` with your actual token
@@ -233,20 +251,23 @@ Or open the file in a text editor and add the `mcpServers` block manually:
 
 ---
 
-
 **Authentication Failed:**
+
 - Verify PAT has `repo` scope
 - Check token hasn't expired
 
 **Remote Server:**
+
 - Verify URL: `https://api.githubcopilot.com/mcp`
 
 **Docker Issues (Local Only):**
+
 - Ensure Docker Desktop is running
 - Try: `docker pull ghcr.io/github/github-mcp-server`
 - If pull fails: `docker logout ghcr.io` then retry
 
 **Server Not Starting / Tools Not Showing:**
+
 - Run `claude mcp list` to view currently configured MCP servers
 - Validate JSON syntax
 - If using an environment variable to store your PAT, make sure you're properly sourcing your PAT using the environment variable

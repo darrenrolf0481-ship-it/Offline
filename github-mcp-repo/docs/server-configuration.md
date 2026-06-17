@@ -3,19 +3,20 @@
 This guide helps you choose the right configuration for your use case and shows you how to apply it. For the complete reference of available toolsets and tools, see the [README](../README.md#tool-configuration).
 
 ## Quick Reference
-We currently support the following ways in which the GitHub MCP Server can be configured: 
 
-| Configuration | Remote Server | Local Server |
-|---------------|---------------|--------------|
-| Toolsets | `X-MCP-Toolsets` header or `/x/{toolset}` URL | `--toolsets` flag or `GITHUB_TOOLSETS` env var |
-| Individual Tools | `X-MCP-Tools` header | `--tools` flag or `GITHUB_TOOLS` env var |
-| Exclude Tools | `X-MCP-Exclude-Tools` header | `--exclude-tools` flag or `GITHUB_EXCLUDE_TOOLS` env var |
-| Read-Only Mode | `X-MCP-Readonly` header or `/readonly` URL | `--read-only` flag or `GITHUB_READ_ONLY` env var |
-| Lockdown Mode | `X-MCP-Lockdown` header | `--lockdown-mode` flag or `GITHUB_LOCKDOWN_MODE` env var |
-| Insiders Mode | `X-MCP-Insiders` header or `/insiders` URL | `--insiders` flag or `GITHUB_INSIDERS` env var |
-| Feature Flags | `X-MCP-Features` header | `--features` flag |
-| Scope Filtering | Always enabled | Always enabled |
-| Server Name/Title | Not available | `GITHUB_MCP_SERVER_NAME` / `GITHUB_MCP_SERVER_TITLE` env vars or `github-mcp-server-config.json` |
+We currently support the following ways in which the GitHub MCP Server can be configured:
+
+| Configuration     | Remote Server                                 | Local Server                                                                                     |
+| ----------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Toolsets          | `X-MCP-Toolsets` header or `/x/{toolset}` URL | `--toolsets` flag or `GITHUB_TOOLSETS` env var                                                   |
+| Individual Tools  | `X-MCP-Tools` header                          | `--tools` flag or `GITHUB_TOOLS` env var                                                         |
+| Exclude Tools     | `X-MCP-Exclude-Tools` header                  | `--exclude-tools` flag or `GITHUB_EXCLUDE_TOOLS` env var                                         |
+| Read-Only Mode    | `X-MCP-Readonly` header or `/readonly` URL    | `--read-only` flag or `GITHUB_READ_ONLY` env var                                                 |
+| Lockdown Mode     | `X-MCP-Lockdown` header                       | `--lockdown-mode` flag or `GITHUB_LOCKDOWN_MODE` env var                                         |
+| Insiders Mode     | `X-MCP-Insiders` header or `/insiders` URL    | `--insiders` flag or `GITHUB_INSIDERS` env var                                                   |
+| Feature Flags     | `X-MCP-Features` header                       | `--features` flag                                                                                |
+| Scope Filtering   | Always enabled                                | Always enabled                                                                                   |
+| Server Name/Title | Not available                                 | `GITHUB_MCP_SERVER_NAME` / `GITHUB_MCP_SERVER_TITLE` env vars or `github-mcp-server-config.json` |
 
 > **Default behavior:** If you don't specify any configuration, the server uses the **default toolsets**: `context`, `issues`, `pull_requests`, `repos`, `users`.
 
@@ -37,7 +38,7 @@ The examples below use VS Code configuration format to illustrate the concepts. 
 
 ### Enabling Specific Tools
 
-**Best for:** users who know exactly what they need and want to optimize context usage by loading only the tools they will use. 
+**Best for:** users who know exactly what they need and want to optimize context usage by loading only the tools they will use.
 
 **Example:**
 
@@ -107,12 +108,7 @@ The examples below use VS Code configuration format to illustrate the concepts. 
 {
   "type": "stdio",
   "command": "go",
-  "args": [
-    "run",
-    "./cmd/github-mcp-server",
-    "stdio",
-    "--toolsets=issues,pull_requests"
-  ],
+  "args": ["run", "./cmd/github-mcp-server", "stdio", "--toolsets=issues,pull_requests"],
   "env": {
     "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
   }
@@ -231,13 +227,15 @@ Listed tools are removed regardless of any other configuration — even if their
 
 When active, this mode will disable all tools that are not read-only even if they were requested.
 
-**Example:** 
+**Example:**
+
 <table>
 <tr><th>Remote Server</th><th>Local Server</th></tr>
 <tr valign="top">
 <td>
 
 **Option A: Header**
+
 ```json
 {
   "type": "http",
@@ -250,6 +248,7 @@ When active, this mode will disable all tools that are not read-only even if the
 ```
 
 **Option B: URL path**
+
 ```json
 {
   "type": "http",
@@ -259,7 +258,6 @@ When active, this mode will disable all tools that are not read-only even if the
 
 </td>
 <td>
-
 
 ```json
 {
@@ -293,6 +291,7 @@ When active, this mode will disable all tools that are not read-only even if the
 Lockdown mode ensures the server only surfaces content in public repositories from users with push access to that repository. Private repositories are unaffected, and collaborators retain full access to their own content.
 
 **Example:**
+
 <table>
 <tr><th>Remote Server</th><th>Local Server</th></tr>
 <tr valign="top">
@@ -315,12 +314,7 @@ Lockdown mode ensures the server only surfaces content in public repositories fr
 {
   "type": "stdio",
   "command": "go",
-  "args": [
-    "run",
-    "./cmd/github-mcp-server",
-    "stdio",
-    "--lockdown-mode"
-  ],
+  "args": ["run", "./cmd/github-mcp-server", "stdio", "--lockdown-mode"],
   "env": {
     "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
   }
@@ -345,6 +339,7 @@ Insiders Mode unlocks experimental features, such as [MCP Apps](#mcp-apps) suppo
 <td>
 
 **Option A: URL path**
+
 ```json
 {
   "type": "http",
@@ -353,6 +348,7 @@ Insiders Mode unlocks experimental features, such as [MCP Apps](#mcp-apps) suppo
 ```
 
 **Option B: Header**
+
 ```json
 {
   "type": "http",
@@ -370,12 +366,7 @@ Insiders Mode unlocks experimental features, such as [MCP Apps](#mcp-apps) suppo
 {
   "type": "stdio",
   "command": "go",
-  "args": [
-    "run",
-    "./cmd/github-mcp-server",
-    "stdio",
-    "--insiders"
-  ],
+  "args": ["run", "./cmd/github-mcp-server", "stdio", "--insiders"],
   "env": {
     "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
   }
@@ -398,10 +389,10 @@ MCP Apps is enabled by [Insiders Mode](#insiders-mode), or independently via the
 
 **Supported tools:**
 
-| Tool | Description |
-|------|-------------|
-| `get_me` | Displays your GitHub user profile with avatar, bio, and stats in a rich card |
-| `issue_write` | Opens an interactive form to create or update issues |
+| Tool                  | Description                                                                         |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| `get_me`              | Displays your GitHub user profile with avatar, bio, and stats in a rich card        |
+| `issue_write`         | Opens an interactive form to create or update issues                                |
 | `create_pull_request` | Provides a full PR creation form to create a pull request (or a draft pull request) |
 
 **Client requirements:** MCP Apps requires a host that supports the [MCP Apps extension](https://modelcontextprotocol.io/docs/extensions/apps). Currently tested with VS Code (`chat.mcp.apps.enabled` setting).
@@ -428,12 +419,7 @@ MCP Apps is enabled by [Insiders Mode](#insiders-mode), or independently via the
 {
   "type": "stdio",
   "command": "go",
-  "args": [
-    "run",
-    "./cmd/github-mcp-server",
-    "stdio",
-    "--features=remote_mcp_ui_apps"
-  ],
+  "args": ["run", "./cmd/github-mcp-server", "stdio", "--features=remote_mcp_ui_apps"],
   "env": {
     "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
   }
@@ -462,11 +448,11 @@ See [Scope Filtering](./scope-filtering.md) for details on how filtering works w
 
 ## Troubleshooting
 
-| Problem | Cause | Solution |
-|---------|-------|----------|
-| Server fails to start | Invalid tool name in `--tools` or `X-MCP-Tools` | Check tool name spelling; use exact names from [Tools list](../README.md#tools) |
-| Write tools not working | Read-only mode enabled | Remove `--read-only` flag or `X-MCP-Readonly` header |
-| Tools missing | Toolset not enabled | Add the required toolset or specific tool |
+| Problem                 | Cause                                           | Solution                                                                        |
+| ----------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------- |
+| Server fails to start   | Invalid tool name in `--tools` or `X-MCP-Tools` | Check tool name spelling; use exact names from [Tools list](../README.md#tools) |
+| Write tools not working | Read-only mode enabled                          | Remove `--read-only` flag or `X-MCP-Readonly` header                            |
+| Tools missing           | Toolset not enabled                             | Add the required toolset or specific tool                                       |
 
 ---
 

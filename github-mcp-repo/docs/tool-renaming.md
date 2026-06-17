@@ -4,7 +4,7 @@ How to safely rename MCP tools without breaking existing user configurations.
 
 ## Overview
 
-When tools are renamed, users who have the old tool name in their MCP configuration (for example, in `X-MCP-Tools` headers for the remote MCP server or `--tools` flags for the local MCP server) would normally get errors. 
+When tools are renamed, users who have the old tool name in their MCP configuration (for example, in `X-MCP-Tools` headers for the remote MCP server or `--tools` flags for the local MCP server) would normally get errors.
 The deprecation alias system allows us to maintain backward compatibility by silently resolving old tool names to their new canonical names.
 
 This allows us to rename tools safely, without introducing breaking changes for users that have a hard reference to those tools in their server configuration.
@@ -33,6 +33,7 @@ var DeprecatedToolAliases = map[string]string{
 ```
 
 A user with this configuration:
+
 ```json
 {
   "--tools": "get_issue,get_file_contents"
@@ -44,31 +45,33 @@ Will get `issue_read` and `get_file_contents` tools registered, with no errors.
 ## Current Deprecations
 
 <!-- START AUTOMATED ALIASES -->
-| Old Name | New Name |
-|----------|----------|
-| `add_project_item` | `projects_write` |
-| `cancel_workflow_run` | `actions_run_trigger` |
-| `delete_project_item` | `projects_write` |
-| `delete_workflow_run_logs` | `actions_run_trigger` |
-| `download_workflow_run_artifact` | `actions_get` |
-| `get_project` | `projects_get` |
-| `get_project_field` | `projects_get` |
-| `get_project_item` | `projects_get` |
-| `get_workflow` | `actions_get` |
-| `get_workflow_job` | `actions_get` |
-| `get_workflow_job_logs` | `actions_get` |
-| `get_workflow_run` | `actions_get` |
-| `get_workflow_run_logs` | `actions_get` |
-| `get_workflow_run_usage` | `actions_get` |
-| `list_project_fields` | `projects_list` |
-| `list_project_items` | `projects_list` |
-| `list_projects` | `projects_list` |
-| `list_workflow_jobs` | `actions_list` |
-| `list_workflow_run_artifacts` | `actions_list` |
-| `list_workflow_runs` | `actions_list` |
-| `list_workflows` | `actions_list` |
-| `rerun_failed_jobs` | `actions_run_trigger` |
-| `rerun_workflow_run` | `actions_run_trigger` |
-| `run_workflow` | `actions_run_trigger` |
-| `update_project_item` | `projects_write` |
+
+| Old Name                         | New Name              |
+| -------------------------------- | --------------------- |
+| `add_project_item`               | `projects_write`      |
+| `cancel_workflow_run`            | `actions_run_trigger` |
+| `delete_project_item`            | `projects_write`      |
+| `delete_workflow_run_logs`       | `actions_run_trigger` |
+| `download_workflow_run_artifact` | `actions_get`         |
+| `get_project`                    | `projects_get`        |
+| `get_project_field`              | `projects_get`        |
+| `get_project_item`               | `projects_get`        |
+| `get_workflow`                   | `actions_get`         |
+| `get_workflow_job`               | `actions_get`         |
+| `get_workflow_job_logs`          | `actions_get`         |
+| `get_workflow_run`               | `actions_get`         |
+| `get_workflow_run_logs`          | `actions_get`         |
+| `get_workflow_run_usage`         | `actions_get`         |
+| `list_project_fields`            | `projects_list`       |
+| `list_project_items`             | `projects_list`       |
+| `list_projects`                  | `projects_list`       |
+| `list_workflow_jobs`             | `actions_list`        |
+| `list_workflow_run_artifacts`    | `actions_list`        |
+| `list_workflow_runs`             | `actions_list`        |
+| `list_workflows`                 | `actions_list`        |
+| `rerun_failed_jobs`              | `actions_run_trigger` |
+| `rerun_workflow_run`             | `actions_run_trigger` |
+| `run_workflow`                   | `actions_run_trigger` |
+| `update_project_item`            | `projects_write`      |
+
 <!-- END AUTOMATED ALIASES -->

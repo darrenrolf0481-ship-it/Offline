@@ -7,10 +7,10 @@
 
 # Claude Code (GLM 5.1)
 
->Serena's cross-file refactoring turned an 8-step, error-prone rename chain into a single atomic call — and after
-measuring the delta across 20 tasks, I would ask any developer I work with to install it, not because it replaces my
-built-in tools, but because it makes the hardest part of my job (changing code safely across files) suddenly feel
-reliable.
+> Serena's cross-file refactoring turned an 8-step, error-prone rename chain into a single atomic call — and after
+> measuring the delta across 20 tasks, I would ask any developer I work with to install it, not because it replaces my
+> built-in tools, but because it makes the hardest part of my job (changing code safely across files) suddenly feel
+> reliable.
 
 ---
 
@@ -93,16 +93,17 @@ reliable.
 ### 3.1 Codebase Understanding
 
 #### Task 1: Repo overview
+
 Both toolsets use the same approach (`ls`, `find`, directory listing). No Serena advantage here.
 
 #### Task 2: Structural overview of a large file (`collector.py`, 1551 lines)
 
-| Step | Serena | Built-in |
-|------|--------|----------|
-| Call | `get_symbols_overview(depth=1)` | `Grep "^(class \|def \|    def )"` |
-| Result | Hierarchical: 14 classes, their methods, attributes, and module-level functions | Flat list of 60 class/function definitions with line numbers |
-| Output size | ~1.5KB structured JSON | ~3KB text |
-| Next step | `find_symbol("Collector/_collect", include_body=True)` — direct | `Read(offset=773, limit=330)` — needs prior knowledge of line range |
+| Step        | Serena                                                                          | Built-in                                                            |
+| ----------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Call        | `get_symbols_overview(depth=1)`                                                 | `Grep "^(class \|def \|    def )"`                                  |
+| Result      | Hierarchical: 14 classes, their methods, attributes, and module-level functions | Flat list of 60 class/function definitions with line numbers        |
+| Output size | ~1.5KB structured JSON                                                          | ~3KB text                                                           |
+| Next step   | `find_symbol("Collector/_collect", include_body=True)` — direct                 | `Read(offset=773, limit=330)` — needs prior knowledge of line range |
 
 **Serena advantage:** Shows attributes (e.g., `CollectStats.collect_time`, `CollectStats.returns`) that Grep cannot see. Hierarchical nesting makes the file's architecture immediately clear.
 
@@ -112,25 +113,25 @@ Both toolsets use the same approach (`ls`, `find`, directory listing). No Serena
 
 #### Task 3: Retrieve a specific method body
 
-| Step | Serena | Built-in |
-|------|--------|----------|
-| Prerequisite | Name path known (`Collector/_collect`) | Line number known from prior Grep (773) |
-| Call | `find_symbol(name_path="Collector/_collect", include_body=True)` | `Read(offset=773, limit=330)` |
-| Payload sent | ~50 chars (name + path) | ~30 chars (offset + limit) |
-| Payload received | Exact method body (~330 lines) | Lines 773–1102 (~330 lines) |
-| Correctness | Always exact | Must know/guess the correct limit |
+| Step             | Serena                                                           | Built-in                                |
+| ---------------- | ---------------------------------------------------------------- | --------------------------------------- |
+| Prerequisite     | Name path known (`Collector/_collect`)                           | Line number known from prior Grep (773) |
+| Call             | `find_symbol(name_path="Collector/_collect", include_body=True)` | `Read(offset=773, limit=330)`           |
+| Payload sent     | ~50 chars (name + path)                                          | ~30 chars (offset + limit)              |
+| Payload received | Exact method body (~330 lines)                                   | Lines 773–1102 (~330 lines)             |
+| Correctness      | Always exact                                                     | Must know/guess the correct limit       |
 
 **Verdict:** Functionally equivalent when line numbers are known. Serena's name-path addressing degrades gracefully across edits; line numbers do not.
 
 #### Task 4: Find all references to `CollectStats`
 
-| Metric | Serena `find_referencing_symbols` | Built-in `Grep` |
-|--------|----------------------------------|-----------------|
-| Calls | 1 | 1 |
-| Output size | 64KB (with context snippets) | ~5KB (70 lines) |
-| False positives | 0 (excludes `LoggedCollectStats`) | 5+ lines from `LoggedCollectStats` |
-| Noise (comments/docs) | Some (docstrings categorized) | Significant (docstrings, comments matched) |
-| Semantic categories | Yes (IMPORT, PARAMETER, DECLARATION, REFERENCE) | No |
+| Metric                | Serena `find_referencing_symbols`               | Built-in `Grep`                            |
+| --------------------- | ----------------------------------------------- | ------------------------------------------ |
+| Calls                 | 1                                               | 1                                          |
+| Output size           | 64KB (with context snippets)                    | ~5KB (70 lines)                            |
+| False positives       | 0 (excludes `LoggedCollectStats`)               | 5+ lines from `LoggedCollectStats`         |
+| Noise (comments/docs) | Some (docstrings categorized)                   | Significant (docstrings, comments matched) |
+| Semantic categories   | Yes (IMPORT, PARAMETER, DECLARATION, REFERENCE) | No                                         |
 
 **Serena advantage:** Zero false positives. Semantic categorization. Shows import paths and parameter usage separately from code references.
 
@@ -140,11 +141,11 @@ Both toolsets use the same approach (`ls`, `find`, directory listing). No Serena
 
 #### Task 5: Type hierarchy of `BaseCollector`
 
-| Metric | Serena `type_hierarchy` | Built-in (Grep chain) |
-|--------|------------------------|----------------------|
-| Calls | 1 | 2–3 (grep subclasses, parse superclass, recurse) |
-| Result | `ABC → object` (super), `Collector → AsyncCollector` (sub) | Partial — direct sub/supertypes only, no transitive chain |
-| External deps | Shows `ABC` from `abc.pyi` | Cannot access |
+| Metric        | Serena `type_hierarchy`                                    | Built-in (Grep chain)                                     |
+| ------------- | ---------------------------------------------------------- | --------------------------------------------------------- |
+| Calls         | 1                                                          | 2–3 (grep subclasses, parse superclass, recurse)          |
+| Result        | `ABC → object` (super), `Collector → AsyncCollector` (sub) | Partial — direct sub/supertypes only, no transitive chain |
+| External deps | Shows `ABC` from `abc.pyi`                                 | Cannot access                                             |
 
 **Verdict:** Serena returns complete, transitive hierarchy including external library types in one call. Built-in approach requires iteration and cannot inspect external deps.
 
@@ -160,27 +161,28 @@ Built-in: Can `Read` site-packages files if you know the path, but discovery is 
 
 #### Task 7a: Small tweak (1-line change in 22-line method)
 
-| Metric | Edit | Serena `replace_symbol_body` |
-|--------|------|------------------------------|
-| Prerequisite | 1 Read (6 lines of context) | 1 `find_symbol` (gets full body) |
-| Payload sent | ~200 chars (old + new string) | ~800 chars (full method body) |
-| Payload received | Success message | "OK" |
-| Total payload | ~200 chars edit + ~300 chars read = ~500 | ~800 chars edit + ~800 chars read = ~1600 |
+| Metric           | Edit                                     | Serena `replace_symbol_body`              |
+| ---------------- | ---------------------------------------- | ----------------------------------------- |
+| Prerequisite     | 1 Read (6 lines of context)              | 1 `find_symbol` (gets full body)          |
+| Payload sent     | ~200 chars (old + new string)            | ~800 chars (full method body)             |
+| Payload received | Success message                          | "OK"                                      |
+| Total payload    | ~200 chars edit + ~300 chars read = ~500 | ~800 chars edit + ~800 chars read = ~1600 |
 
 **Verdict:** Edit is 3x more token-efficient for small tweaks inside methods.
 
 #### Task 7b: Medium rewrite (~6 line changes in 20-line method)
 
-| Metric | Edit | Serena `replace_symbol_body` |
-|--------|------|------------------------------|
-| Payload sent | ~700 chars (old + new, full method) | ~500 chars (new body only) |
-| Prerequisite read | ~500 chars | ~500 chars (from prior `find_symbol`) |
+| Metric            | Edit                                | Serena `replace_symbol_body`          |
+| ----------------- | ----------------------------------- | ------------------------------------- |
+| Payload sent      | ~700 chars (old + new, full method) | ~500 chars (new body only)            |
+| Prerequisite read | ~500 chars                          | ~500 chars (from prior `find_symbol`) |
 
 **Verdict:** Roughly equal. For medium rewrites, payloads converge.
 
 #### Task 7c: Large rewrite (full body of 55+ line method)
 
 For a full-body rewrite of a 55-line method:
+
 - Edit: old (~55 lines) + new (~55 lines) = ~110 lines sent
 - Serena: new body only (~55 lines) sent
 
@@ -188,22 +190,22 @@ For a full-body rewrite of a 55-line method:
 
 #### Task 8: Insert a new function after an existing one
 
-| Step | Serena | Built-in |
-|------|--------|----------|
-| 1 | `find_symbol("refresh_all_sequence_stats")` to confirm target | `Read(offset=250, limit=10)` to find insertion point |
-| 2 | `insert_after_symbol(name_path, body)` | `Edit(old_string=anchor, new_string=anchor+new_fn)` |
-| Total calls | 2 | 2 |
-| Payload sent | New function body only (~300 chars) | Anchor context + new function (~400 chars) |
+| Step         | Serena                                                        | Built-in                                             |
+| ------------ | ------------------------------------------------------------- | ---------------------------------------------------- |
+| 1            | `find_symbol("refresh_all_sequence_stats")` to confirm target | `Read(offset=250, limit=10)` to find insertion point |
+| 2            | `insert_after_symbol(name_path, body)`                        | `Edit(old_string=anchor, new_string=anchor+new_fn)`  |
+| Total calls  | 2                                                             | 2                                                    |
+| Payload sent | New function body only (~300 chars)                           | Anchor context + new function (~400 chars)           |
 
 **Verdict:** No meaningful difference. Both require 2 calls and produce identical results.
 
 #### Task 9: Rename a private helper (single-file, 4 occurrences)
 
-| Metric | Serena `rename` | Edit `replace_all` |
-|--------|-----------------|-------------------|
-| Calls | 1 | 1 |
-| Prerequisites | None | Must have Read the file first |
-| Result | All 4 occurrences renamed | All 4 occurrences renamed |
+| Metric        | Serena `rename`           | Edit `replace_all`            |
+| ------------- | ------------------------- | ----------------------------- |
+| Calls         | 1                         | 1                             |
+| Prerequisites | None                      | Must have Read the file first |
+| Result        | All 4 occurrences renamed | All 4 occurrences renamed     |
 
 **Verdict:** Functionally identical. Both are 1 call. Edit's Read-first requirement is usually satisfied from prior exploration.
 
@@ -211,19 +213,20 @@ For a full-body rewrite of a 55-line method:
 
 #### Task 10: Cross-file rename (`CollectStatsBase` → `BaseCollectStats`, 4 files, 10 occurrences)
 
-| Step | Serena | Built-in |
-|------|--------|----------|
-| Find references | Automatic | 1 Grep call |
-| Read files | Not needed | 3 Read calls (Edit's prerequisite) |
-| Apply edits | 1 rename call (atomic) | 4 Edit calls (one per file) |
-| Verify | Return: "Success" | Manual (4 success messages) |
-| **Total calls** | **1** | **8** (1 grep + 3 reads + 4 edits) |
+| Step            | Serena                 | Built-in                           |
+| --------------- | ---------------------- | ---------------------------------- |
+| Find references | Automatic              | 1 Grep call                        |
+| Read files      | Not needed             | 3 Read calls (Edit's prerequisite) |
+| Apply edits     | 1 rename call (atomic) | 4 Edit calls (one per file)        |
+| Verify          | Return: "Success"      | Manual (4 success messages)        |
+| **Total calls** | **1**                  | **8** (1 grep + 3 reads + 4 edits) |
 
 **Verdict:** Serena converts an 8-call manual pipeline into 1 atomic operation. This is the single largest efficiency gain observed.
 
 #### Task 11: Move symbol to another module
 
 Serena's `move` tool:
+
 1. Moved `_nullable_slice` from `collector.py` to `converter.py`
 2. Added import in source file: `from tianshou.data.utils.converter import _nullable_slice`
 3. Added dependency import in target: `from tianshou.data.collector import _TArrLike`
@@ -238,6 +241,7 @@ Built-in equivalent: Read function body → Write to target → Edit source (rem
 #### Task 12: Move file (`segtree.py` to parent directory)
 
 Serena's `move` tool:
+
 1. Moved the file
 2. Updated the one direct import in `__init__.py` (`tianshou.data.utils.segtree` → `tianshou.data.segtree`)
 3. Other files (`prio.py`, tests) imported via re-export and needed no changes
@@ -312,12 +316,12 @@ Searching for `FIXME|HACK|TODO` across the codebase is a text search. Serena's s
 
 ### Payload differences across edit sizes
 
-| Edit type | Edit payload | Serena payload | Winner |
-|-----------|-------------|---------------|--------|
-| 1-line tweak in 22-line method | ~200 chars | ~800 chars | Edit (4x) |
-| 6-line change in 20-line method | ~700 chars | ~500 chars | Roughly equal |
-| Full rewrite of 55-line method | ~2200 chars | ~1100 chars | Serena (2x) |
-| Full rewrite of 330-line method | ~13,000 chars | ~6,500 chars | Serena (2x) |
+| Edit type                       | Edit payload  | Serena payload | Winner        |
+| ------------------------------- | ------------- | -------------- | ------------- |
+| 1-line tweak in 22-line method  | ~200 chars    | ~800 chars     | Edit (4x)     |
+| 6-line change in 20-line method | ~700 chars    | ~500 chars     | Roughly equal |
+| Full rewrite of 55-line method  | ~2200 chars   | ~1100 chars    | Serena (2x)   |
+| Full rewrite of 330-line method | ~13,000 chars | ~6,500 chars   | Serena (2x)   |
 
 ### Forced reads
 
@@ -399,14 +403,14 @@ Searching for `FIXME|HACK|TODO` across the codebase is a text search. Serena's s
 
 ## 8. Tasks Outside Serena's Scope (Built-In Only)
 
-| Task | Tool | Frequency | Share of daily work |
-|------|------|-----------|-------------------|
-| Read config/TOML/yaml files | `Read` | High | |
-| Free-text search (log strings, TODOs, URLs) | `Grep` | High | |
-| File discovery by name pattern | `Glob` | Medium | |
-| Shell commands (git, pip, pytest) | `Bash` | High | |
-| Write new files from scratch | `Write` | Medium | |
-| Read images, notebooks, PDFs | `Read` | Low | |
+| Task                                        | Tool    | Frequency | Share of daily work |
+| ------------------------------------------- | ------- | --------- | ------------------- |
+| Read config/TOML/yaml files                 | `Read`  | High      |                     |
+| Free-text search (log strings, TODOs, URLs) | `Grep`  | High      |                     |
+| File discovery by name pattern              | `Glob`  | Medium    |                     |
+| Shell commands (git, pip, pytest)           | `Bash`  | High      |                     |
+| Write new files from scratch                | `Write` | Medium    |                     |
+| Read images, notebooks, PDFs                | `Read`  | Low       |                     |
 
 Estimated share of daily work covered by built-in-only tasks: **20–30%**. The remaining 70–80% involves reading, editing, and navigating code where Serena's semantic tools are applicable.
 
@@ -428,19 +432,19 @@ Estimated share of daily work covered by built-in-only tasks: **20–30%**. The 
 
 ## Appendix: Call Count Summary
 
-| Task | Serena calls | Built-in calls | Delta |
-|------|-------------|----------------|-------|
-| Structural overview (1 file) | 1 | 1 | 0 |
-| Method body retrieval | 1 | 1 | 0 |
-| Find references (1 symbol) | 1 | 1 | 0 (but Serena has 0 false positives vs Grep's 5+) |
-| Type hierarchy | 1 | 2–3 | −1 to −2 |
-| Small edit (1 line in 22-line method) | 1 (+1 read) | 1 (+1 read) | 0 |
-| Medium edit (6 lines in 20-line method) | 1 | 1 | 0 |
-| Insert new method | 1 (+1 confirm) | 1 (+1 read) | 0 |
-| Single-file rename (4 occurrences) | 1 | 1 | 0 |
-| **Cross-file rename (4 files, 10 occurrences)** | **1** | **8** | **−7** |
-| **Move symbol to another module** | **1** | **5+** | **−4+** |
-| **Move file + update imports** | **1** | **3+** | **−2+** |
-| Safe delete (usage check) | 1 | 1 grep | 0 |
+| Task                                            | Serena calls   | Built-in calls | Delta                                             |
+| ----------------------------------------------- | -------------- | -------------- | ------------------------------------------------- |
+| Structural overview (1 file)                    | 1              | 1              | 0                                                 |
+| Method body retrieval                           | 1              | 1              | 0                                                 |
+| Find references (1 symbol)                      | 1              | 1              | 0 (but Serena has 0 false positives vs Grep's 5+) |
+| Type hierarchy                                  | 1              | 2–3            | −1 to −2                                          |
+| Small edit (1 line in 22-line method)           | 1 (+1 read)    | 1 (+1 read)    | 0                                                 |
+| Medium edit (6 lines in 20-line method)         | 1              | 1              | 0                                                 |
+| Insert new method                               | 1 (+1 confirm) | 1 (+1 read)    | 0                                                 |
+| Single-file rename (4 occurrences)              | 1              | 1              | 0                                                 |
+| **Cross-file rename (4 files, 10 occurrences)** | **1**          | **8**          | **−7**                                            |
+| **Move symbol to another module**               | **1**          | **5+**         | **−4+**                                           |
+| **Move file + update imports**                  | **1**          | **3+**         | **−2+**                                           |
+| Safe delete (usage check)                       | 1              | 1 grep         | 0                                                 |
 
 Largest single-task delta: cross-file rename saves 7 calls and provides atomicity.

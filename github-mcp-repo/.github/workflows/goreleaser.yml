@@ -2,7 +2,7 @@ name: GoReleaser Release
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 permissions:
   contents: write
   id-token: write
@@ -22,7 +22,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: "go.mod"
+          go-version-file: 'go.mod'
 
       - name: Download dependencies
         run: go mod download
@@ -32,7 +32,7 @@ jobs:
         with:
           distribution: goreleaser
           # GoReleaser version
-          version: "~> v2"
+          version: '~> v2'
           # Arguments to pass to GoReleaser
           args: release --clean
           workdir: .

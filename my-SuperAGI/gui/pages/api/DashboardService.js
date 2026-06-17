@@ -36,7 +36,6 @@ export const getExecutionTasks = (executionId) => {
   return api.get(`/agentexecutionfeeds/get/tasks/${executionId}`);
 };
 
-
 export const createAgent = (agentData) => {
   return api.post(`/agents/create`, agentData);
 };
@@ -63,20 +62,20 @@ export const getLastActiveAgent = (projectId) => {
 
 export const uploadFile = (agentId, formData) => {
   return api.post(`/resources/add/${agentId}`, formData);
-}
+};
 
 export const validateAccessToken = () => {
   return api.get(`/validate-access-token`);
-}
+};
 
 export const checkEnvironment = () => {
   return api.get(`/configs/get/env`);
-}
+};
 
 export const getOrganisationConfig = (organisationId, key) => {
   return api.get(`/configs/get/organisation/${organisationId}/key/${key}`);
-}
+};
 
 export const updateOrganisationConfig = (organisationId, configData) => {
   return api.post(`/configs/add/organisation/${organisationId}`, configData);
-}
+};
