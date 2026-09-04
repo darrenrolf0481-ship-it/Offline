@@ -3984,15 +3984,23 @@ const App = () => {
   );
 };
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  constructor(props: any) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { error: null };
+  props: ErrorBoundaryProps;
+
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { error: null };
+    this.props = props;
   }
-  static getDerivedStateFromError(error: Error) {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error };
   }
   render() {
