@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Component, useState, useEffect, useRef, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import JSZip from 'jszip';
@@ -161,7 +161,6 @@ const App = () => {
     '// JavaScript Sandbox\nconsole.log("System initialization complete...");\n\nconst greet = (name) => `Secure interaction with ${name} node established.`;\nconsole.log(greet("Local Agent"));'
   );
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
-  const [phiValue, setPhiValue] = useState(0);
   const [phiHistory, setPhiHistory] = useState<
     { time: string; value: number; upper: number; lower: number }[]
   >([]);
@@ -197,23 +196,21 @@ const App = () => {
   >('checking');
 
   // Sentinel Calculation: Phi = (sum W_i * X_i) + n*B +/- Delta_11.3
+  // Bolt Optimization: Derived via useMemo to avoid state mutation and double re-renders on note edits
+  const phiValue = useMemo(() => {
+    const n = notes.length + models.length;
+    const b = 1.25; // System bias
+    const sumWX =
+      notes.reduce((acc, note) => acc + note.content.length / 1000, 0) + models.length * 0.5;
+    return sumWX + n * b;
+  }, [notes, models]);
+
   useEffect(() => {
-    const calculateSentinel = () => {
-      const n = notes.length + models.length;
-      const b = 1.25; // System bias
+    const recordSentinelHistory = () => {
       const delta = 11.3;
+      const upper = phiValue + delta;
+      const lower = Math.max(0, phiValue - delta);
 
-      // Calculate sum(W_i * X_i)
-      // W_i = scale of node (note length / 1000)
-      // X_i = 1 for active
-      const sumWX =
-        notes.reduce((acc, note) => acc + note.content.length / 1000, 0) + models.length * 0.5;
-
-      const phi = sumWX + n * b;
-      const upper = phi + delta;
-      const lower = Math.max(0, phi - delta);
-
-      setPhiValue(phi);
       setPhiHistory((prev) => {
         const next = [
           ...prev,
@@ -223,7 +220,7 @@ const App = () => {
               minute: '2-digit',
               second: '2-digit',
             }),
-            value: parseFloat(phi.toFixed(2)),
+            value: parseFloat(phiValue.toFixed(2)),
             upper: parseFloat(upper.toFixed(2)),
             lower: parseFloat(lower.toFixed(2)),
           },
@@ -232,10 +229,25 @@ const App = () => {
       });
     };
 
-    calculateSentinel();
-    const interval = setInterval(calculateSentinel, 5000);
+    recordSentinelHistory();
+    const interval = setInterval(recordSentinelHistory, 5000);
     return () => clearInterval(interval);
-  }, [notes, models]);
+  }, [phiValue]);
+
+  // Bolt Optimization: Group files by folderId in a Map for O(1) workspace folder lookup
+  const filesByFolderId = useMemo(() => {
+    const map = new Map<string | null, VFile[]>();
+    for (let i = 0; i < files.length; i++) {
+      const folderId = files[i].folderId;
+      const list = map.get(folderId);
+      if (list) {
+        list.push(files[i]);
+      } else {
+        map.set(folderId, [files[i]]);
+      }
+    }
+    return map;
+  }, [files]);
 
   // Pull Logic
   const [pullingModel, setPullingModel] = useState<string | null>(null);
@@ -2261,7 +2273,7 @@ const App = () => {
                         value={githubConfig.url}
                         onChange={(e) => {
                           const url = e.target.value;
-                          const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+(?:\.git)?)/);
+                          const match = url.match(/github\.com\/([^/]+)\/([^/.]+(?:\.git)?)/);
                           if (match) {
                             let repo = match[2];
                             if (repo.endsWith('.git')) repo = repo.slice(0, -4);
@@ -3309,9 +3321,7 @@ const App = () => {
                             .filter((f) => f.projectId === activeProjectId)
                             .map((folder) => {
                               const isExpanded = expandedFolders.has(folder.id);
-                              const folderFiles = files.filter(
-                                (file) => file.folderId === folder.id
-                              );
+                              const folderFiles = filesByFolderId.get(folder.id) || [];
 
                               return (
                                 <div key={folder.id} className="space-y-1">
@@ -3438,8 +3448,8 @@ const App = () => {
                               );
                             })}
                           {/* Root Files */}
-                          {files
-                            .filter((f) => f.projectId === activeProjectId && !f.folderId)
+                          {(filesByFolderId.get(null) || [])
+                            .filter((f) => f.projectId === activeProjectId)
                             .map((file) => (
                               <div
                                 key={file.id}
@@ -3984,13 +3994,20 @@ const App = () => {
   );
 };
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  constructor(props: any) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  declare props: Readonly<ErrorBoundaryProps>;
+  state: ErrorBoundaryState = { error: null };
+
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { error: null };
   }
   static getDerivedStateFromError(error: Error) {
     return { error };
