@@ -1,0 +1,3 @@
+## 2025-02-23 - Workspace File Lookups and Associative RegExp Allocations
+**Learning:** In `index.tsx`, the workspace file explorer and source control tab performed nested linear array searches (`files.filter`, `gitStates.find`, `stagedFiles.includes`, `files.find`) inside JSX render loops, causing $O(N \cdot M)$ complexity on every state change. Additionally, associative text corrections created temporary objects and compiled `RegExp` instances per invocation.
+**Action:** Use `useMemo` to construct `filesByFolderId` Map and `stagedFileIdsSet` Set for $O(1)$ lookups during rendering, memoize `activeFile`, and pre-compile static `RegExp` replacement rules outside component scope.
