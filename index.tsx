@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Component, useState, useEffect, useRef, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import JSZip from 'jszip';
@@ -102,6 +102,14 @@ import {
 
 import { POPULAR_MODELS, SidebarItem, StatCard } from './src/components/Shared';
 
+// Pre-compiled associative correction rules to eliminate allocations on string processing
+const ASSOCIATIVE_CORRECTIONS: [RegExp, string][] = [
+  [/termites/gi, 'termux'],
+  [/sentinale/gi, 'sentinel'],
+  [/phi index/gi, 'Phi Sentinel value'],
+  [/brain/gi, 'Sentinel Cognitive Engine'],
+];
+
 const App = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -195,6 +203,37 @@ const App = () => {
   const [connectionStatus, setConnectionStatus] = useState<
     'connected' | 'disconnected' | 'checking'
   >('checking');
+
+  // Memoized lookups for high performance list rendering and O(1) checks
+  const filesByFolderId = useMemo(() => {
+    const map = new Map<string, VFile[]>();
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.folderId) {
+        const list = map.get(file.folderId);
+        if (list) {
+          list.push(file);
+        } else {
+          map.set(file.folderId, [file]);
+        }
+      }
+    }
+    return map;
+  }, [files]);
+
+  const activeGitState = useMemo(() => {
+    if (!activeProjectId) return null;
+    return gitStates.find((gs) => gs.projectId === activeProjectId) || null;
+  }, [gitStates, activeProjectId]);
+
+  const stagedFileIdsSet = useMemo(() => {
+    return new Set(activeGitState?.stagedFiles || []);
+  }, [activeGitState]);
+
+  const activeFile = useMemo(() => {
+    if (!activeFileId) return null;
+    return files.find((f) => f.id === activeFileId) || null;
+  }, [files, activeFileId]);
 
   // Sentinel Calculation: Phi = (sum W_i * X_i) + n*B +/- Delta_11.3
   useEffect(() => {
@@ -622,19 +661,11 @@ const App = () => {
   };
 
   const getAssociativeCorrection = (input: string) => {
-    // Mimic Associative Processing
-    const dictionary: Record<string, string> = {
-      termites: 'termux',
-      sentinale: 'sentinel',
-      'phi index': 'Phi Sentinel value',
-      brain: 'Sentinel Cognitive Engine',
-    };
-
     let corrected = input;
-    Object.keys(dictionary).forEach((key) => {
-      const regex = new RegExp(key, 'gi');
-      corrected = corrected.replace(regex, dictionary[key]);
-    });
+    for (let i = 0; i < ASSOCIATIVE_CORRECTIONS.length; i++) {
+      const [regex, replacement] = ASSOCIATIVE_CORRECTIONS[i];
+      corrected = corrected.replace(regex, replacement);
+    }
     return corrected;
   };
 
@@ -2261,7 +2292,7 @@ const App = () => {
                         value={githubConfig.url}
                         onChange={(e) => {
                           const url = e.target.value;
-                          const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+(?:\.git)?)/);
+                          const match = url.match(/github\.com\/([^/]+)\/([^/.]+(?:\.git)?)/);
                           if (match) {
                             let repo = match[2];
                             if (repo.endsWith('.git')) repo = repo.slice(0, -4);
@@ -3309,9 +3340,7 @@ const App = () => {
                             .filter((f) => f.projectId === activeProjectId)
                             .map((folder) => {
                               const isExpanded = expandedFolders.has(folder.id);
-                              const folderFiles = files.filter(
-                                (file) => file.folderId === folder.id
-                              );
+                              const folderFiles = filesByFolderId.get(folder.id) || [];
 
                               return (
                                 <div key={folder.id} className="space-y-1">
@@ -3493,7 +3522,7 @@ const App = () => {
                           <GitBranch size={16} className="text-blue-500" />
                         </div>
 
-                        {!getGitState(activeProjectId!).isInitialized ? (
+                        {!activeGitState?.isInitialized ? (
                           <div className="flex-1 flex flex-col items-center justify-center text-center opacity-70">
                             <GitBranch size={32} className="mb-4 text-slate-700" />
                             <p className="text-xs text-slate-500 mb-6 font-medium">
@@ -3514,16 +3543,14 @@ const App = () => {
                                   Changes
                                 </span>
                                 <span className="px-2 py-0.5 bg-slate-800 text-[9px] font-bold text-slate-400 rounded-md">
-                                  {getGitState(activeProjectId!).stagedFiles.length} Staged
+                                  {activeGitState.stagedFiles.length} Staged
                                 </span>
                               </div>
                               <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
                                 {files
                                   .filter((f) => f.projectId === activeProjectId)
                                   .map((file) => {
-                                    const isStaged = getGitState(
-                                      activeProjectId!
-                                    ).stagedFiles.includes(file.id);
+                                    const isStaged = stagedFileIdsSet.has(file.id);
                                     return (
                                       <div
                                         key={file.id}
@@ -3733,7 +3760,7 @@ const App = () => {
                               </div>
                               <input
                                 type="text"
-                                value={files.find((f) => f.id === activeFileId)?.name || ''}
+                                value={activeFile?.name || ''}
                                 onChange={(e) => renameFile(activeFileId!, e.target.value)}
                                 className="bg-transparent border-none focus:outline-none font-bold text-slate-200 text-sm"
                               />
@@ -3777,8 +3804,7 @@ const App = () => {
                               </button>
                               <button
                                 onClick={() => {
-                                  const content =
-                                    files.find((f) => f.id === activeFileId)?.content || '';
+                                  const content = activeFile?.content || '';
                                   setTerminalCode(content);
                                   runCode();
                                 }}
@@ -3791,7 +3817,7 @@ const App = () => {
                           </div>
 
                           <textarea
-                            value={files.find((f) => f.id === activeFileId)?.content || ''}
+                            value={activeFile?.content || ''}
                             onChange={(e) => updateFileContent(activeFileId!, e.target.value)}
                             spellCheck={false}
                             className="flex-1 bg-slate-950/30 border border-slate-800/50 rounded-2xl p-4 lg:p-6 font-mono text-xs lg:text-sm leading-relaxed text-blue-100/80 focus:outline-none focus:border-blue-500 transition-all resize-none shadow-inner custom-scrollbar min-h-[200px]"
@@ -3984,13 +4010,20 @@ const App = () => {
   );
 };
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  constructor(props: any) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  declare props: ErrorBoundaryProps;
+  state: ErrorBoundaryState = { error: null };
+
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { error: null };
   }
   static getDerivedStateFromError(error: Error) {
     return { error };
