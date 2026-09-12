@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Component } from 'react';
 import { createRoot } from 'react-dom/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import JSZip from 'jszip';
@@ -101,6 +101,14 @@ import {
 } from './types';
 
 import { POPULAR_MODELS, SidebarItem, StatCard } from './src/components/Shared';
+
+// Pre-compiled replacement rules at module scope to avoid re-instantiating RegExp objects on render or query
+const ASSOCIATIVE_CORRECTIONS: [RegExp, string][] = [
+  [/termites/gi, 'termux'],
+  [/sentinale/gi, 'sentinel'],
+  [/phi index/gi, 'Phi Sentinel value'],
+  [/brain/gi, 'Sentinel Cognitive Engine'],
+];
 
 const App = () => {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -622,19 +630,11 @@ const App = () => {
   };
 
   const getAssociativeCorrection = (input: string) => {
-    // Mimic Associative Processing
-    const dictionary: Record<string, string> = {
-      termites: 'termux',
-      sentinale: 'sentinel',
-      'phi index': 'Phi Sentinel value',
-      brain: 'Sentinel Cognitive Engine',
-    };
-
     let corrected = input;
-    Object.keys(dictionary).forEach((key) => {
-      const regex = new RegExp(key, 'gi');
-      corrected = corrected.replace(regex, dictionary[key]);
-    });
+    for (let i = 0; i < ASSOCIATIVE_CORRECTIONS.length; i++) {
+      const [regex, replacement] = ASSOCIATIVE_CORRECTIONS[i];
+      corrected = corrected.replace(regex, replacement);
+    }
     return corrected;
   };
 
@@ -2261,7 +2261,7 @@ const App = () => {
                         value={githubConfig.url}
                         onChange={(e) => {
                           const url = e.target.value;
-                          const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+(?:\.git)?)/);
+                          const match = url.match(/github\.com\/([^/]+)\/([^/.]+(?:\.git)?)/);
                           if (match) {
                             let repo = match[2];
                             if (repo.endsWith('.git')) repo = repo.slice(0, -4);
@@ -3984,13 +3984,20 @@ const App = () => {
   );
 };
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  constructor(props: any) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  declare readonly props: ErrorBoundaryProps;
+  state: ErrorBoundaryState = { error: null };
+
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { error: null };
   }
   static getDerivedStateFromError(error: Error) {
     return { error };
@@ -4019,7 +4026,7 @@ class ErrorBoundary extends React.Component<
         </div>
       );
     }
-    return this.props.children;
+    return (this.props as ErrorBoundaryProps).children;
   }
 }
 
