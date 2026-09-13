@@ -2261,7 +2261,7 @@ const App = () => {
                         value={githubConfig.url}
                         onChange={(e) => {
                           const url = e.target.value;
-                          const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+(?:\.git)?)/);
+                          const match = url.match(/github\.com\/([^/]+)\/([^/.]+(?:\.git)?)/);
                           if (match) {
                             let repo = match[2];
                             if (repo.endsWith('.git')) repo = repo.slice(0, -4);
@@ -3984,17 +3984,27 @@ const App = () => {
   );
 };
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  constructor(props: any) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  declare state: ErrorBoundaryState;
+  declare props: ErrorBoundaryProps;
+
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { error: null };
   }
-  static getDerivedStateFromError(error: Error) {
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error };
   }
+
   render() {
     if (this.state.error) {
       return (

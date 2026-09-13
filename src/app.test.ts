@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { SidebarItem, StatCard } from './components/Shared';
 
-describe('app', () => {
-  it('is defined', () => {
-    expect(true).toBe(true);
+describe('Shared components', () => {
+  it('exports memoized components', () => {
+    expect(SidebarItem).toBeDefined();
+    expect(StatCard).toBeDefined();
   });
 });
