@@ -9,7 +9,8 @@ export const POPULAR_MODELS = [
   { name: 'moondream:latest', size: '829MB', desc: 'Vision-capable small model' },
 ];
 
-export const SidebarItem = ({
+// Memoized SidebarItem to prevent unnecessary re-renders when parent state updates
+export const SidebarItem = React.memo(({
   icon: Icon,
   label,
   active,
@@ -31,9 +32,12 @@ export const SidebarItem = ({
     <Icon size={20} />
     <span className="font-medium">{label}</span>
   </button>
-);
+));
 
-export const StatCard = ({
+SidebarItem.displayName = 'SidebarItem';
+
+// Memoized StatCard to prevent unnecessary re-renders during state changes
+export const StatCard = React.memo(({
   icon: Icon,
   label,
   value,
@@ -64,4 +68,6 @@ export const StatCard = ({
       </div>
     </div>
   </div>
-);
+));
+
+StatCard.displayName = 'StatCard';
