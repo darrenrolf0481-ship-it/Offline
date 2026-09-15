@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Component } from 'react';
 import { createRoot } from 'react-dom/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import JSZip from 'jszip';
@@ -101,6 +101,33 @@ import {
 } from './types';
 
 import { POPULAR_MODELS, SidebarItem, StatCard } from './src/components/Shared';
+
+// Pre-compiled dictionary and regex for single-pass O(N) associative corrections
+export const ASSOCIATIVE_DICTIONARY: Record<string, string> = {
+  termites: 'termux',
+  sentinale: 'sentinel',
+  'phi index': 'Phi Sentinel value',
+  brain: 'Sentinel Cognitive Engine',
+};
+
+const ASSOCIATIVE_REGEX = new RegExp(
+  Object.keys(ASSOCIATIVE_DICTIONARY)
+    .map((key) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|'),
+  'gi'
+);
+
+/**
+ * Perform single-pass associative correction on user input.
+ * Avoids O(K * N) repeated RegExp creation and multi-pass string replacements.
+ */
+export const getAssociativeCorrection = (input: string): string => {
+  if (!input) return input;
+  return input.replace(
+    ASSOCIATIVE_REGEX,
+    (matched) => ASSOCIATIVE_DICTIONARY[matched.toLowerCase()] || matched
+  );
+};
 
 const App = () => {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -621,22 +648,7 @@ const App = () => {
     }));
   };
 
-  const getAssociativeCorrection = (input: string) => {
-    // Mimic Associative Processing
-    const dictionary: Record<string, string> = {
-      termites: 'termux',
-      sentinale: 'sentinel',
-      'phi index': 'Phi Sentinel value',
-      brain: 'Sentinel Cognitive Engine',
-    };
-
-    let corrected = input;
-    Object.keys(dictionary).forEach((key) => {
-      const regex = new RegExp(key, 'gi');
-      corrected = corrected.replace(regex, dictionary[key]);
-    });
-    return corrected;
-  };
+  // Uses pre-compiled module-level ASSOCIATIVE_REGEX and ASSOCIATIVE_DICTIONARY
 
   // Sync Notes to Local Storage
   useEffect(() => {
@@ -2261,7 +2273,7 @@ const App = () => {
                         value={githubConfig.url}
                         onChange={(e) => {
                           const url = e.target.value;
-                          const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+(?:\.git)?)/);
+                          const match = url.match(/github\.com\/([^/]+)\/([^/.]+(?:\.git)?)/);
                           if (match) {
                             let repo = match[2];
                             if (repo.endsWith('.git')) repo = repo.slice(0, -4);
@@ -3984,17 +3996,24 @@ const App = () => {
   );
 };
 
-class ErrorBoundary extends React.Component<
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<
   { children: React.ReactNode },
-  { error: Error | null }
+  ErrorBoundaryState
 > {
-  constructor(props: any) {
+  state: ErrorBoundaryState = { error: null };
+
+  constructor(public props: { children: React.ReactNode }) {
     super(props);
-    this.state = { error: null };
   }
-  static getDerivedStateFromError(error: Error) {
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error };
   }
+
   render() {
     if (this.state.error) {
       return (
@@ -4023,9 +4042,14 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-const root = createRoot(document.getElementById('root')!);
-root.render(
-  <ErrorBoundary>
-    <App />
-  </ErrorBoundary>
-);
+if (typeof document !== 'undefined') {
+  const rootEl = document.getElementById('root');
+  if (rootEl) {
+    const root = createRoot(rootEl);
+    root.render(
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    );
+  }
+}
