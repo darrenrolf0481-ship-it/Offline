@@ -106,8 +106,15 @@ async function startServer() {
     }
   });
 
+  // In-memory cache for parsed agency agents to avoid synchronous disk reads on every request
+  let cachedAgencyAgents: any[] | null = null;
+
   app.get('/api/agency-agents', (req, res) => {
     try {
+      if (cachedAgencyAgents) {
+        return res.json({ status: 'success', agents: cachedAgencyAgents });
+      }
+
       const repoPath = path.join(process.cwd(), 'agency-agents-repo');
       if (!fs.existsSync(repoPath)) {
         return res.json({ status: 'error', message: 'Repository not found' });
@@ -142,6 +149,7 @@ async function startServer() {
         });
       });
 
+      cachedAgencyAgents = agents;
       res.json({ status: 'success', agents });
     } catch (err: any) {
       console.error(err);
