@@ -161,7 +161,6 @@ const App = () => {
     '// JavaScript Sandbox\nconsole.log("System initialization complete...");\n\nconst greet = (name) => `Secure interaction with ${name} node established.`;\nconsole.log(greet("Local Agent"));'
   );
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
-  const [phiValue, setPhiValue] = useState(0);
   const [phiHistory, setPhiHistory] = useState<
     { time: string; value: number; upper: number; lower: number }[]
   >([]);
@@ -192,28 +191,35 @@ const App = () => {
     message: '',
   });
   const [models, setModels] = useState<string[]>([]);
+
+  // Optimize: Memoize derived Sentinel Phi calculation so it is recomputed efficiently
+  // when `notes` or `models` change, avoiding redundant recalculations during unrelated renders.
+  const phiValue = React.useMemo(() => {
+    const n = notes.length + models.length;
+    const b = 1.25; // System bias
+    const sumWX =
+      notes.reduce((acc, note) => acc + note.content.length / 1000, 0) + models.length * 0.5;
+    return sumWX + n * b;
+  }, [notes, models]);
+
+  // Track latest phiValue without recreating sampling intervals or appending history on every keypress
+  const phiValueRef = useRef(phiValue);
+  useEffect(() => {
+    phiValueRef.current = phiValue;
+  }, [phiValue]);
   const [connectionStatus, setConnectionStatus] = useState<
     'connected' | 'disconnected' | 'checking'
   >('checking');
 
-  // Sentinel Calculation: Phi = (sum W_i * X_i) + n*B +/- Delta_11.3
+  // Optimize: Periodically sample Phi history every 5 seconds independently of state changes,
+  // preventing constant interval tear-down and spamming history on every note edit.
   useEffect(() => {
-    const calculateSentinel = () => {
-      const n = notes.length + models.length;
-      const b = 1.25; // System bias
+    const recordHistory = () => {
+      const phi = phiValueRef.current;
       const delta = 11.3;
-
-      // Calculate sum(W_i * X_i)
-      // W_i = scale of node (note length / 1000)
-      // X_i = 1 for active
-      const sumWX =
-        notes.reduce((acc, note) => acc + note.content.length / 1000, 0) + models.length * 0.5;
-
-      const phi = sumWX + n * b;
       const upper = phi + delta;
       const lower = Math.max(0, phi - delta);
 
-      setPhiValue(phi);
       setPhiHistory((prev) => {
         const next = [
           ...prev,
@@ -232,10 +238,10 @@ const App = () => {
       });
     };
 
-    calculateSentinel();
-    const interval = setInterval(calculateSentinel, 5000);
+    recordHistory();
+    const interval = setInterval(recordHistory, 5000);
     return () => clearInterval(interval);
-  }, [notes, models]);
+  }, []);
 
   // Pull Logic
   const [pullingModel, setPullingModel] = useState<string | null>(null);
@@ -2261,7 +2267,7 @@ const App = () => {
                         value={githubConfig.url}
                         onChange={(e) => {
                           const url = e.target.value;
-                          const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+(?:\.git)?)/);
+                          const match = url.match(/github\.com\/([^/]+)\/([^/.]+(?:\.git)?)/);
                           if (match) {
                             let repo = match[2];
                             if (repo.endsWith('.git')) repo = repo.slice(0, -4);
@@ -3984,17 +3990,27 @@ const App = () => {
   );
 };
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  constructor(props: any) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  declare props: ErrorBoundaryProps;
+  declare state: ErrorBoundaryState;
+
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { error: null };
   }
-  static getDerivedStateFromError(error: Error) {
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error };
   }
+
   render() {
     if (this.state.error) {
       return (
