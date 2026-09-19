@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Component, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import JSZip from 'jszip';
@@ -102,6 +102,14 @@ import {
 
 import { POPULAR_MODELS, SidebarItem, StatCard } from './src/components/Shared';
 
+// Pre-compiled static regex map for associative processing to avoid RegExp allocation per call
+const ASSOCIATIVE_DICTIONARY: [RegExp, string][] = [
+  [/termites/gi, 'termux'],
+  [/sentinale/gi, 'sentinel'],
+  [/phi index/gi, 'Phi Sentinel value'],
+  [/brain/gi, 'Sentinel Cognitive Engine'],
+];
+
 const App = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -113,6 +121,38 @@ const App = () => {
   const [agentRuns, setAgentRuns] = useState<AgentRun[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
+
+  // Performance Optimization: Memoize active project files and group by folderId.
+  // Transforms nested O(N_folders * N_files) linear array scans in Workspace Explorer
+  // into an O(N_files) map construction with O(1) folder lookups during renders.
+  const projectFiles = useMemo(() => {
+    if (!activeProjectId) return [];
+    return files.filter((f) => f.projectId === activeProjectId);
+  }, [files, activeProjectId]);
+
+  const filesByFolderMap = useMemo(() => {
+    const map = new Map<string | null, VFile[]>();
+    for (const file of projectFiles) {
+      const key = file.folderId;
+      const list = map.get(key);
+      if (list) {
+        list.push(file);
+      } else {
+        map.set(key, [file]);
+      }
+    }
+    return map;
+  }, [projectFiles]);
+
+  const projectFolders = useMemo(() => {
+    if (!activeProjectId) return [];
+    return folders.filter((f) => f.projectId === activeProjectId);
+  }, [folders, activeProjectId]);
+
+  const projectTasks = useMemo(() => {
+    if (!activeProjectId) return [];
+    return tasks.filter((t) => t.projectId === activeProjectId);
+  }, [tasks, activeProjectId]);
   const [activeTab, setActiveTab] = useState<
     'dashboard' | 'assistant' | 'notes' | 'terminal' | 'sentinel' | 'workspace' | 'agents'
   >('dashboard');
@@ -622,19 +662,11 @@ const App = () => {
   };
 
   const getAssociativeCorrection = (input: string) => {
-    // Mimic Associative Processing
-    const dictionary: Record<string, string> = {
-      termites: 'termux',
-      sentinale: 'sentinel',
-      'phi index': 'Phi Sentinel value',
-      brain: 'Sentinel Cognitive Engine',
-    };
-
+    // Mimic Associative Processing - uses precompiled regex instances
     let corrected = input;
-    Object.keys(dictionary).forEach((key) => {
-      const regex = new RegExp(key, 'gi');
-      corrected = corrected.replace(regex, dictionary[key]);
-    });
+    for (const [regex, replacement] of ASSOCIATIVE_DICTIONARY) {
+      corrected = corrected.replace(regex, replacement);
+    }
     return corrected;
   };
 
@@ -2261,7 +2293,7 @@ const App = () => {
                         value={githubConfig.url}
                         onChange={(e) => {
                           const url = e.target.value;
-                          const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+(?:\.git)?)/);
+                          const match = url.match(/github\.com\/([^/]+)\/([^/.]+(?:\.git)?)/);
                           if (match) {
                             let repo = match[2];
                             if (repo.endsWith('.git')) repo = repo.slice(0, -4);
@@ -3305,13 +3337,9 @@ const App = () => {
                         </div>
                         <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
                           {/* Folders */}
-                          {folders
-                            .filter((f) => f.projectId === activeProjectId)
-                            .map((folder) => {
-                              const isExpanded = expandedFolders.has(folder.id);
-                              const folderFiles = files.filter(
-                                (file) => file.folderId === folder.id
-                              );
+                          {projectFolders.map((folder) => {
+                            const isExpanded = expandedFolders.has(folder.id);
+                            const folderFiles = filesByFolderMap.get(folder.id) || [];
 
                               return (
                                 <div key={folder.id} className="space-y-1">
@@ -3438,9 +3466,7 @@ const App = () => {
                               );
                             })}
                           {/* Root Files */}
-                          {files
-                            .filter((f) => f.projectId === activeProjectId && !f.folderId)
-                            .map((file) => (
+                          {(filesByFolderMap.get(null) || []).map((file) => (
                               <div
                                 key={file.id}
                                 className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all ${
@@ -3518,9 +3544,7 @@ const App = () => {
                                 </span>
                               </div>
                               <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-                                {files
-                                  .filter((f) => f.projectId === activeProjectId)
-                                  .map((file) => {
+                                {projectFiles.map((file) => {
                                     const isStaged = getGitState(
                                       activeProjectId!
                                     ).stagedFiles.includes(file.id);
@@ -3626,9 +3650,7 @@ const App = () => {
                         </div>
 
                         <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-                          {tasks
-                            .filter((t) => t.projectId === activeProjectId)
-                            .map((task) => (
+                          {projectTasks.map((task) => (
                               <div
                                 key={task.id}
                                 className="bg-slate-950/50 border border-slate-800/50 rounded-2xl p-4 space-y-3 hover:border-slate-700 transition-colors group"
@@ -3702,7 +3724,7 @@ const App = () => {
                                 </div>
                               </div>
                             ))}
-                          {tasks.filter((t) => t.projectId === activeProjectId).length === 0 && (
+                          {projectTasks.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-12 text-center opacity-40">
                               <CheckCircle2 size={32} className="mb-3" />
                               <p className="text-xs font-medium">No tasks assigned to this node.</p>
@@ -3984,17 +4006,26 @@ const App = () => {
   );
 };
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  constructor(props: any) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  props: ErrorBoundaryProps;
+  state: ErrorBoundaryState = { error: null };
+
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { error: null };
   }
-  static getDerivedStateFromError(error: Error) {
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error };
   }
+
   render() {
     if (this.state.error) {
       return (
