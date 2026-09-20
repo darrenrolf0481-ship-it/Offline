@@ -106,8 +106,16 @@ async function startServer() {
     }
   });
 
+  // Cache parsed agency agents with a 60s TTL to avoid synchronous disk reads on every request
+  let cachedAgencyAgents: { data: any[]; timestamp: number } | null = null;
+  const CACHE_TTL_MS = 60000;
+
   app.get('/api/agency-agents', (req, res) => {
     try {
+      if (cachedAgencyAgents && Date.now() - cachedAgencyAgents.timestamp < CACHE_TTL_MS) {
+        return res.json({ status: 'success', agents: cachedAgencyAgents.data });
+      }
+
       const repoPath = path.join(process.cwd(), 'agency-agents-repo');
       if (!fs.existsSync(repoPath)) {
         return res.json({ status: 'error', message: 'Repository not found' });
@@ -142,6 +150,7 @@ async function startServer() {
         });
       });
 
+      cachedAgencyAgents = { data: agents, timestamp: Date.now() };
       res.json({ status: 'success', agents });
     } catch (err: any) {
       console.error(err);
@@ -222,7 +231,7 @@ async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true, allowedHosts: 'all' },
+      server: { middlewareMode: true, allowedHosts: ['all'] },
       appType: 'spa',
     });
     app.use(vite.middlewares);
