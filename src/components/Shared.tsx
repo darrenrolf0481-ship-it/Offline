@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 
 export const POPULAR_MODELS = [
   { name: 'llama3:8b', size: '4.7GB', desc: 'Most popular general purpose model' },
@@ -9,7 +9,8 @@ export const POPULAR_MODELS = [
   { name: 'moondream:latest', size: '829MB', desc: 'Vision-capable small model' },
 ];
 
-export const SidebarItem = ({
+// Memoized to avoid unnecessary re-renders during frequent state updates (e.g. 5s phi interval, brain state updates)
+export const SidebarItem = memo(({
   icon: Icon,
   label,
   active,
@@ -31,9 +32,12 @@ export const SidebarItem = ({
     <Icon size={20} />
     <span className="font-medium">{label}</span>
   </button>
-);
+));
 
-export const StatCard = ({
+SidebarItem.displayName = 'SidebarItem';
+
+// Memoized to prevent re-rendering invariant dashboard stat cards when unrelated parent state changes
+export const StatCard = memo(({
   icon: Icon,
   label,
   value,
@@ -64,4 +68,6 @@ export const StatCard = ({
       </div>
     </div>
   </div>
-);
+));
+
+StatCard.displayName = 'StatCard';
