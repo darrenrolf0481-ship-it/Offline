@@ -196,10 +196,19 @@ const App = () => {
     'connected' | 'disconnected' | 'checking'
   >('checking');
 
+  // Optimization (⚡ Bolt): Decouple interval timer from notes/models state updates using refs.
+  // Prevents interval re-creation, state churn on phiHistory, and Recharts re-renders on every keystroke.
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
+  const modelsRef = useRef(models);
+  modelsRef.current = models;
+
   // Sentinel Calculation: Phi = (sum W_i * X_i) + n*B +/- Delta_11.3
   useEffect(() => {
     const calculateSentinel = () => {
-      const n = notes.length + models.length;
+      const currentNotes = notesRef.current;
+      const currentModels = modelsRef.current;
+      const n = currentNotes.length + currentModels.length;
       const b = 1.25; // System bias
       const delta = 11.3;
 
@@ -207,7 +216,7 @@ const App = () => {
       // W_i = scale of node (note length / 1000)
       // X_i = 1 for active
       const sumWX =
-        notes.reduce((acc, note) => acc + note.content.length / 1000, 0) + models.length * 0.5;
+        currentNotes.reduce((acc, note) => acc + note.content.length / 1000, 0) + currentModels.length * 0.5;
 
       const phi = sumWX + n * b;
       const upper = phi + delta;
@@ -235,7 +244,7 @@ const App = () => {
     calculateSentinel();
     const interval = setInterval(calculateSentinel, 5000);
     return () => clearInterval(interval);
-  }, [notes, models]);
+  }, []);
 
   // Pull Logic
   const [pullingModel, setPullingModel] = useState<string | null>(null);
@@ -2261,7 +2270,7 @@ const App = () => {
                         value={githubConfig.url}
                         onChange={(e) => {
                           const url = e.target.value;
-                          const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+(?:\.git)?)/);
+                          const match = url.match(/github\.com\/([^/]+)\/([^/.]+(?:\.git)?)/);
                           if (match) {
                             let repo = match[2];
                             if (repo.endsWith('.git')) repo = repo.slice(0, -4);
@@ -3984,10 +3993,7 @@ const App = () => {
   );
 };
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
+class ErrorBoundary extends (React.Component as any) {
   constructor(props: any) {
     super(props);
     this.state = { error: null };
