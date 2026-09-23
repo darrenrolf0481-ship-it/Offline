@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Component, useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import JSZip from 'jszip';
@@ -195,6 +195,24 @@ const App = () => {
   const [connectionStatus, setConnectionStatus] = useState<
     'connected' | 'disconnected' | 'checking'
   >('checking');
+
+  // ⚡ Performance Optimization: O(1) folder file lookup map
+  // Avoids O(F * N) array scanning during workspace folder tree rendering
+  const filesByFolderMap = React.useMemo(() => {
+    const map = new Map<string, VFile[]>();
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.folderId) {
+        let list = map.get(file.folderId);
+        if (!list) {
+          list = [];
+          map.set(file.folderId, list);
+        }
+        list.push(file);
+      }
+    }
+    return map;
+  }, [files]);
 
   // Sentinel Calculation: Phi = (sum W_i * X_i) + n*B +/- Delta_11.3
   useEffect(() => {
@@ -2261,7 +2279,7 @@ const App = () => {
                         value={githubConfig.url}
                         onChange={(e) => {
                           const url = e.target.value;
-                          const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+(?:\.git)?)/);
+                          const match = url.match(/github\.com\/([^/]+)\/([^/.]+(?:\.git)?)/);
                           if (match) {
                             let repo = match[2];
                             if (repo.endsWith('.git')) repo = repo.slice(0, -4);
@@ -3309,9 +3327,7 @@ const App = () => {
                             .filter((f) => f.projectId === activeProjectId)
                             .map((folder) => {
                               const isExpanded = expandedFolders.has(folder.id);
-                              const folderFiles = files.filter(
-                                (file) => file.folderId === folder.id
-                              );
+                              const folderFiles = filesByFolderMap.get(folder.id) || [];
 
                               return (
                                 <div key={folder.id} className="space-y-1">
@@ -3984,17 +4000,27 @@ const App = () => {
   );
 };
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  constructor(props: any) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  declare props: ErrorBoundaryProps;
+  declare state: ErrorBoundaryState;
+
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { error: null };
   }
-  static getDerivedStateFromError(error: Error) {
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error };
   }
+
   render() {
     if (this.state.error) {
       return (
