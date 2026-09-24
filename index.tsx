@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import JSZip from 'jszip';
@@ -161,7 +161,6 @@ const App = () => {
     '// JavaScript Sandbox\nconsole.log("System initialization complete...");\n\nconst greet = (name) => `Secure interaction with ${name} node established.`;\nconsole.log(greet("Local Agent"));'
   );
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
-  const [phiValue, setPhiValue] = useState(0);
   const [phiHistory, setPhiHistory] = useState<
     { time: string; value: number; upper: number; lower: number }[]
   >([]);
@@ -196,24 +195,40 @@ const App = () => {
     'connected' | 'disconnected' | 'checking'
   >('checking');
 
-  // Sentinel Calculation: Phi = (sum W_i * X_i) + n*B +/- Delta_11.3
+  // Bolt Optimization: Compute Phi value derived directly from notes and models using useMemo.
+  // This avoids storing phiValue in state and triggering unnecessary state updates on every keystroke.
+  const phiValue = useMemo(() => {
+    const n = notes.length + models.length;
+    const b = 1.25; // System bias
+    const sumWX =
+      notes.reduce((acc, note) => acc + note.content.length / 1000, 0) + models.length * 0.5;
+    return sumWX + n * b;
+  }, [notes, models]);
+
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
+  const modelsRef = useRef(models);
+  modelsRef.current = models;
+
+  // Bolt Optimization: Record historical snapshots strictly on a 5-second interval.
+  // Using refs prevents the interval timer from being torn down/re-created and prevents pushing
+  // duplicate history entries on every single keystroke when notes or models change.
   useEffect(() => {
-    const calculateSentinel = () => {
-      const n = notes.length + models.length;
+    const recordSnapshot = () => {
+      const currentNotes = notesRef.current;
+      const currentModels = modelsRef.current;
+      const n = currentNotes.length + currentModels.length;
       const b = 1.25; // System bias
       const delta = 11.3;
 
-      // Calculate sum(W_i * X_i)
-      // W_i = scale of node (note length / 1000)
-      // X_i = 1 for active
       const sumWX =
-        notes.reduce((acc, note) => acc + note.content.length / 1000, 0) + models.length * 0.5;
+        currentNotes.reduce((acc, note) => acc + note.content.length / 1000, 0) +
+        currentModels.length * 0.5;
 
       const phi = sumWX + n * b;
       const upper = phi + delta;
       const lower = Math.max(0, phi - delta);
 
-      setPhiValue(phi);
       setPhiHistory((prev) => {
         const next = [
           ...prev,
@@ -232,10 +247,10 @@ const App = () => {
       });
     };
 
-    calculateSentinel();
-    const interval = setInterval(calculateSentinel, 5000);
+    recordSnapshot();
+    const interval = setInterval(recordSnapshot, 5000);
     return () => clearInterval(interval);
-  }, [notes, models]);
+  }, []);
 
   // Pull Logic
   const [pullingModel, setPullingModel] = useState<string | null>(null);
@@ -2261,7 +2276,7 @@ const App = () => {
                         value={githubConfig.url}
                         onChange={(e) => {
                           const url = e.target.value;
-                          const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+(?:\.git)?)/);
+                          const match = url.match(/github\.com\/([^/]+)\/([^/.]+(?:\.git)?)/);
                           if (match) {
                             let repo = match[2];
                             if (repo.endsWith('.git')) repo = repo.slice(0, -4);
@@ -3984,13 +3999,20 @@ const App = () => {
   );
 };
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  constructor(props: any) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = { error: null };
+  public props: ErrorBoundaryProps;
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { error: null };
+    this.props = props;
   }
   static getDerivedStateFromError(error: Error) {
     return { error };
