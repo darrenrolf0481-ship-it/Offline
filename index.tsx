@@ -100,7 +100,7 @@ import {
   AvoidanceNode,
 } from './types';
 
-import { POPULAR_MODELS, SidebarItem, StatCard } from './src/components/Shared';
+import { POPULAR_MODELS, SidebarItem, StatCard, calculatePhiValue } from './src/components/Shared';
 
 const App = () => {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -161,7 +161,6 @@ const App = () => {
     '// JavaScript Sandbox\nconsole.log("System initialization complete...");\n\nconst greet = (name) => `Secure interaction with ${name} node established.`;\nconsole.log(greet("Local Agent"));'
   );
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
-  const [phiValue, setPhiValue] = useState(0);
   const [phiHistory, setPhiHistory] = useState<
     { time: string; value: number; upper: number; lower: number }[]
   >([]);
@@ -197,23 +196,25 @@ const App = () => {
   >('checking');
 
   // Sentinel Calculation: Phi = (sum W_i * X_i) + n*B +/- Delta_11.3
+  // Performance optimization: Memoize phiValue calculation to avoid redundant calculations on keystrokes
+  const phiValue = React.useMemo(() => {
+    return calculatePhiValue(notes, models);
+  }, [notes, models]);
+
+  // Keep ref to latest phiValue so 5s sampling timer doesn't tear down/re-subscribe on every keystroke
+  const phiValueRef = useRef(phiValue);
   useEffect(() => {
-    const calculateSentinel = () => {
-      const n = notes.length + models.length;
-      const b = 1.25; // System bias
+    phiValueRef.current = phiValue;
+  }, [phiValue]);
+
+  // Sample Phi value every 5s for real-time flux history graph (decoupled from state changes / keystrokes)
+  useEffect(() => {
+    const sampleSentinelHistory = () => {
+      const currentPhi = phiValueRef.current;
       const delta = 11.3;
+      const upper = currentPhi + delta;
+      const lower = Math.max(0, currentPhi - delta);
 
-      // Calculate sum(W_i * X_i)
-      // W_i = scale of node (note length / 1000)
-      // X_i = 1 for active
-      const sumWX =
-        notes.reduce((acc, note) => acc + note.content.length / 1000, 0) + models.length * 0.5;
-
-      const phi = sumWX + n * b;
-      const upper = phi + delta;
-      const lower = Math.max(0, phi - delta);
-
-      setPhiValue(phi);
       setPhiHistory((prev) => {
         const next = [
           ...prev,
@@ -223,7 +224,7 @@ const App = () => {
               minute: '2-digit',
               second: '2-digit',
             }),
-            value: parseFloat(phi.toFixed(2)),
+            value: parseFloat(currentPhi.toFixed(2)),
             upper: parseFloat(upper.toFixed(2)),
             lower: parseFloat(lower.toFixed(2)),
           },
@@ -232,10 +233,10 @@ const App = () => {
       });
     };
 
-    calculateSentinel();
-    const interval = setInterval(calculateSentinel, 5000);
+    sampleSentinelHistory();
+    const interval = setInterval(sampleSentinelHistory, 5000);
     return () => clearInterval(interval);
-  }, [notes, models]);
+  }, []);
 
   // Pull Logic
   const [pullingModel, setPullingModel] = useState<string | null>(null);
@@ -2261,7 +2262,7 @@ const App = () => {
                         value={githubConfig.url}
                         onChange={(e) => {
                           const url = e.target.value;
-                          const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+(?:\.git)?)/);
+                          const match = url.match(/github\.com\/([^/]+)\/([^/.]+(?:\.git)?)/);
                           if (match) {
                             let repo = match[2];
                             if (repo.endsWith('.git')) repo = repo.slice(0, -4);
@@ -3988,9 +3989,12 @@ class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { error: Error | null }
 > {
-  constructor(props: any) {
+  state: { error: Error | null } = { error: null };
+  props: { children: React.ReactNode };
+
+  constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = { error: null };
+    this.props = props;
   }
   static getDerivedStateFromError(error: Error) {
     return { error };
