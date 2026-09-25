@@ -1,0 +1,3 @@
+## 2025-02-25 - Decoupling Real-Time Sampling Timers from Frequent State Inputs
+**Learning:** In React applications with real-time time-series charts or background flux calculations (like `calculateSentinel`), putting rapidly mutating state arrays (e.g. `notes` updated on every keystroke) directly in the `useEffect` dependency array of a `setInterval` timer causes the timer to teardown and re-run on every keystroke, triggering redundant calculations and state updates (`setPhiHistory`).
+**Action:** Extract expensive synchronous calculations into `useMemo` and keep the latest computed value in a `useRef` so time-based sampling timers (`setInterval`) can run on a stable effect without dependencies on high-frequency state updates.

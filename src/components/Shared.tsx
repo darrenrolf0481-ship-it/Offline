@@ -1,5 +1,14 @@
 import React from 'react';
 
+// Sentinel Phi Calculation helper for performance-optimized Phi index computation
+export const calculatePhiValue = (notes: { content: string }[], models: string[]): number => {
+  const n = notes.length + models.length;
+  const b = 1.25; // System bias
+  const sumWX =
+    notes.reduce((acc, note) => acc + note.content.length / 1000, 0) + models.length * 0.5;
+  return sumWX + n * b;
+};
+
 export const POPULAR_MODELS = [
   { name: 'llama3:8b', size: '4.7GB', desc: 'Most popular general purpose model' },
   { name: 'phi3:mini', size: '2.3GB', desc: 'Powerful small model for faster inference' },
